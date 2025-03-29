@@ -6,8 +6,8 @@ def ratings_updater(movie_name, user_rating):
     Обновляет файл avg_ratings.csv, вычисляя новый средний рейтинг для выбранного фильма.
     """
     # Загрузка данных
-    ratings_df = pd.read_csv('/Users/summernightrunner/Developer/Project_October/data/ratings.csv')
-    movies_df = pd.read_csv('/Users/summernightrunner/Developer/Project_October/data/movies_metadata.csv')
+    ratings_df = pd.read_csv('data/ratings.csv')
+    movies_df = pd.read_csv('movies_metadata.csv')
     
     # Находим id фильма по названию (приводим к нижнему регистру для сравнения)
     movie_id = movies_df[movies_df['title'].str.lower() == movie_name.lower()]['id'].values[0]
@@ -20,7 +20,7 @@ def ratings_updater(movie_name, user_rating):
     }
     
     # Сохранение обновленного файла ratings.csv
-    ratings_df.to_csv('/Users/summernightrunner/Developer/Project_October/data/ratings.csv', index=False)
+    ratings_df.to_csv('data/ratings.csv', index=False)
 
     return True
 

@@ -6,9 +6,9 @@ def data_preprocessor():
     Функция для предобработки данных фильмов.
     """
     # Загрузка данных
-    movies_df = pd.read_csv("/Users/summernightrunner/Developer/Project_October/data/movies_metadata.csv", low_memory=False)
-    pp_ratings_df = pd.read_csv("/Users/summernightrunner/Developer/Project_October/data/ratings.csv", low_memory=False)
-    keywords_df = pd.read_csv("/Users/summernightrunner/Developer/Project_October/data/keywords.csv", low_memory=False)
+    movies_df = pd.read_csv("data/movies_metadata.csv", low_memory=False)
+    pp_ratings_df = pd.read_csv("data/ratings.csv", low_memory=False)
+    keywords_df = pd.read_csv("data/keywords.csv", low_memory=False)
     
     # Форматирование описаний фильмов
     movies_df['overview'] = movies_df['overview'].fillna('').astype(str).str.lower()
@@ -62,15 +62,13 @@ def data_preprocessor():
     movies_df['animation'] = pd.to_numeric(movies_df['animation'], errors='coerce').fillna(0).astype(int)
 
     # Приводим столбец 'avg_people_rating' и 'vote_average' к floатному типу
-    movies_df['avg_people_rating'] = movies_df['avg_people_rating'].astype(float)
-    if movies_df['avg_people_rating'].isnull().any():
-        movies_df['avg_people_rating'] = movies_df['avg_people_rating'].fillna('No rating')
-    movies_df['vote_average'] = movies_df['vote_average'].astype(float)
-    if movies_df['vote_average'].isnull().any():
-        movies_df['vote_average'] = movies_df['vote_average'].fillna('No rating')
+    movies_df['avg_people_rating'] = pd.to_numeric(movies_df['avg_people_rating'], errors='coerce')
+    movies_df['avg_people_rating'] = movies_df['avg_people_rating'].fillna('No rating')
+    movies_df['vote_average'] = pd.to_numeric(movies_df['vote_average'], errors='coerce')
+    movies_df['vote_average'] = movies_df['vote_average'].fillna('No rating')
 
     # Записываем в CSV
-    movies_df.to_csv('/Users/summernightrunner/Developer/Project_October/data/movies_metadata.csv', index=False)
+    movies_df.to_csv('data/movies_metadata.csv', index=False)
 
     return True
 

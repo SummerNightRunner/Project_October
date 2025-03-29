@@ -1,2 +1,5 @@
 .conda
 .DS_Store
+data/secret.key
+data/users.csv
+backend/key_generator.py

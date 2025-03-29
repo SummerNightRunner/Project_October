@@ -45,7 +45,7 @@ def similarity_flags(profile_flags, flags_array):
 
 # Функция для получения рекомендаций
 def get_recommendations(selected_movie_ids, include_adult=False, top_n=20,
-                                      weight_desc=0.45, weight_collection=0.1, weight_genres=0.15, weight_flags=0.1, weight_keywords=0.2):
+                                      weight_desc=0.35, weight_collection=0.1, weight_genres=0.15, weight_flags=0.2, weight_keywords=0.2):
     """
     Расширенная функция рекомендаций, учитывающая:
       - Описание фильма (TF‑IDF векторизация overview)
