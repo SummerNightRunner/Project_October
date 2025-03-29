@@ -20,8 +20,6 @@ movies_df['genres_list'] = movies_df['genres'].fillna('[]').apply(lambda x: [gen
 # Создание бинарного списка Animation
 movies_df['Animation'] = movies_df['genres_list'].apply(lambda x: 1 if 'Animation' in x else 0)
 
-movies_df[['title', 'id']].drop_duplicates().to_csv('/Users/summernightrunner/Developer/Project_October/dataset/movies_id.csv', index=False)
-
 # Векторизация описаний фильмов
 vectorizer = TfidfVectorizer(lowercase=True, max_features=1000, min_df=10, ngram_range=(1, 2))
 tfidf_matrix = vectorizer.fit_transform(movies_df['overview'])
@@ -65,6 +63,13 @@ movies_df['collection_id'] = movies_df['belongs_to_collection'].apply(extract_co
 
 # Удаляем значения NaN
 movies_df['collection_id'] = movies_df['collection_id'].dropna().astype('Int64')
+
+# Загружаем датасет рейтинга
+ratings_df = pd.read_csv('/Users/summernightrunner/Developer/Project_October/dataset/avg_ratings.csv', low_memory=False)
+
+# Приводим id к строковому типу
+movies_df['id'] = movies_df['id'].astype(str)
+ratings_df['movieId'] = ratings_df['movieId'].astype(str)
 
 # схожесть по бинарным признакам
 def similarity_flags(profile_flags, flags_array):
@@ -162,19 +167,26 @@ def get_recommendations(selected_movie_ids, include_adult=False, top_n=20,
     # Сортировка по убыванию комбинированного сходства
     sorted_indices = np.argsort(combined_sim)[::-1]
     
+    # Собираем первые top_n фильмов по схожести
     recommendations = []
     for idx in sorted_indices:
         movie_id = movies_df_filtered.iloc[idx]['id']
-        # Исключаем фильмы, выбранные пользователем
         if movie_id in selected_movie_ids:
             continue
+        # Рассчитываем средний рейтинг для данного фильма
+        rating = ratings_df[ratings_df['movieId'] == movie_id]['average_rating'].mean()
+        # Если рейтинг не найден, присваиваем 0, иначе приводим к float
+        rating = 0.0 if pd.isnull(rating) else float(rating)
         recommendations.append({
             'id': movie_id,
             'title': movies_df_filtered.iloc[idx]['title'],
-            #'similarity': float(combined_sim[idx])
+            'rating': rating
         })
         if len(recommendations) == top_n:
             break
+    
+    # Сортируем массив топ_n рекомендаций по рейтингу (от высокого к низкому)
+    recommendations = sorted(recommendations, key=lambda x: x['rating'], reverse=True)
     
     return recommendations
 
