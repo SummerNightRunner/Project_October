@@ -3,22 +3,12 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MultiLabelBinarizer
 import numpy as np
-import ast
 
-movies_df = pd.read_csv("/Users/summernightrunner/Developer/Project_October/dataset/movies_metadata.csv", low_memory=False)
+# Загрузка данных
+movies_df = pd.read_csv("/Users/summernightrunner/Developer/Project_October/data/movies_metadata.csv", low_memory=False)
 
 # Форматирование описаний фильмов
-movies_df['overview'] = movies_df['overview'].fillna('').str.lower()
-movies_df['overview'] = movies_df['overview'].str.lower()
-
-# Форматирование стобца adult
-movies_df['adult'] = movies_df['adult'].replace({'True': 1, 'False': 0})
-
-# Создание столбца с жанрами
-movies_df['genres_list'] = movies_df['genres'].fillna('[]').apply(lambda x: [genre['name'] for genre in ast.literal_eval(x)])
-
-# Создание бинарного списка Animation
-movies_df['Animation'] = movies_df['genres_list'].apply(lambda x: 1 if 'Animation' in x else 0)
+movies_df['overview'] = movies_df['overview'].fillna('')
 
 # Векторизация описаний фильмов
 vectorizer = TfidfVectorizer(lowercase=True, max_features=1000, min_df=10, ngram_range=(1, 2))
@@ -29,47 +19,11 @@ mlb = MultiLabelBinarizer()
 genres_matrix = mlb.fit_transform(movies_df['genres_list'])
 
 # Массив флагов
-flags_array = np.array(movies_df[['Animation', 'adult']].values)
-
-# Создания столбца с списком ключевых слов
-keywords_df = pd.read_csv('/Users/summernightrunner/Developer/Project_October/dataset/keywords.csv', low_memory=False)
-keywords_df['keywords_list'] = keywords_df['keywords'].fillna('[]').apply(lambda x: [keyword['name'] for keyword in ast.literal_eval(x)])
-
-# Добавление столбца с ключевыми словами в основной датафрейм
-movies_df['keywords_list'] = keywords_df['keywords_list']
+flags_array = np.array(movies_df[['animation', 'adult']].values)
 
 # Векторизация ключевых слов
 mlb_keywords = MultiLabelBinarizer()
 keywords_matrix = mlb_keywords.fit_transform(movies_df['keywords_list'].fillna('[]'))
-
-def extract_collection_id(val):
-    # Если значение отсутствует или пустое, вернуть None
-    if pd.isnull(val) or val == "":
-        return None
-    try:
-        # Если значение уже является словарём, использовать его напрямую
-        if isinstance(val, dict):
-            return val.get('id')
-        # Если это строка, пытаемся преобразовать в dict
-        collection = ast.literal_eval(val)
-        if isinstance(collection, dict):
-            return collection.get('id')
-        return None
-    except Exception as e:
-        return None
-
-# Применяем функцию к столбцу belongs_to_collection и создаем новый столбец collection_id
-movies_df['collection_id'] = movies_df['belongs_to_collection'].apply(extract_collection_id)
-
-# Удаляем значения NaN
-movies_df['collection_id'] = movies_df['collection_id'].dropna().astype('Int64')
-
-# Загружаем датасет рейтинга
-ratings_df = pd.read_csv('/Users/summernightrunner/Developer/Project_October/dataset/avg_ratings.csv', low_memory=False)
-
-# Приводим id к строковому типу
-movies_df['id'] = movies_df['id'].astype(str)
-ratings_df['movieId'] = ratings_df['movieId'].astype(str)
 
 # схожесть по бинарным признакам
 def similarity_flags(profile_flags, flags_array):
@@ -173,23 +127,19 @@ def get_recommendations(selected_movie_ids, include_adult=False, top_n=20,
         movie_id = movies_df_filtered.iloc[idx]['id']
         if movie_id in selected_movie_ids:
             continue
-        # Рассчитываем средний рейтинг для данного фильма
-        rating = ratings_df[ratings_df['movieId'] == movie_id]['average_rating'].mean()
-        # Если рейтинг не найден, присваиваем 0, иначе приводим к float
-        rating = 0.0 if pd.isnull(rating) else float(rating)
         recommendations.append({
-            'id': movie_id,
             'title': movies_df_filtered.iloc[idx]['title'],
-            'rating': rating
+            'vote_average': movies_df_filtered.iloc[idx]['vote_average'],
+            'site_user_rating': movies_df_filtered.iloc[idx]['avg_people_rating'],
         })
         if len(recommendations) == top_n:
             break
     
     # Сортируем массив топ_n рекомендаций по рейтингу (от высокого к низкому)
-    recommendations = sorted(recommendations, key=lambda x: x['rating'], reverse=True)
+    recommendations = sorted(recommendations, key=lambda x: x['vote_average'], reverse=True)
     
     return recommendations
 
-sample_selected = ['862']
-recommendations = get_recommendations(sample_selected)
+selected_movie_ids = ['862']
+recommendations = get_recommendations(selected_movie_ids)
 print(recommendations)
