@@ -71,5 +71,3 @@ def data_preprocessor():
     movies_df.to_csv('data/movies_metadata.csv', index=False)
 
     return True
-
-data_preprocessor()

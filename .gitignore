@@ -3,3 +3,4 @@
 data/secret.key
 data/users.csv
 backend/key_generator.py
+__pycache__

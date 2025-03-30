@@ -5,7 +5,7 @@ from sklearn.preprocessing import MultiLabelBinarizer
 import numpy as np
 
 # Загрузка данных
-movies_df = pd.read_csv("/Users/summernightrunner/Developer/Project_October/data/movies_metadata.csv", low_memory=False)
+movies_df = pd.read_csv("data/movies_metadata.csv", low_memory=False)
 
 # Форматирование описаний фильмов
 movies_df['overview'] = movies_df['overview'].fillna('')
@@ -139,7 +139,3 @@ def get_recommendations(selected_movie_ids, include_adult=False, top_n=20,
     recommendations = sorted(recommendations, key=lambda x: x['vote_average'], reverse=True)
     
     return recommendations
-
-selected_movie_ids = ['862']
-recommendations = get_recommendations(selected_movie_ids)
-print(recommendations)

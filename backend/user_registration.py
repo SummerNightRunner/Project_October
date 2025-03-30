@@ -1,67 +1,102 @@
-import csv
+import os
+import pandas as pd
+import hashlib
 from cryptography.fernet import Fernet
 from re import match
 
-# Генерация или загрузка ключа шифрования
+# Пути к файлам
 KEY_FILE = 'data/secret.key'
+DATABASE_FILE = 'data/users.csv'
+
+# Определяем имена столбцов для базы данных
+COLUMNS = ['id', 'email', 'email_hash', 'username', 'username_hash', 'password']
 
 def load_key():
     with open(KEY_FILE, 'rb') as key_file:
-        key = key_file.read()
-    return key
+        return key_file.read()
 
 key = load_key()
 cipher = Fernet(key)
 
-# Путь к базе данных
-DATABASE_FILE = 'data/users.csv'
+def compute_hash(value):
+    """Вычисление SHA-256 хэша строки."""
+    return hashlib.sha256(value.encode()).hexdigest()
 
-# Функция для получения следующего ID
-def get_next_user_id():
-    try:
-        with open(DATABASE_FILE, 'r') as file:
-            reader = csv.reader(file)
-            next(reader)  # Пропускаем заголовок
-            rows = list(reader)
-            if rows:
-                last_id = int(rows[-1][0])
-                return last_id + 1
-            else:
-                return 270897  # ID первого пользователя
-    except FileNotFoundError:
-        return 270897
+def get_users_df():
+    """
+    Загружает базу данных пользователей из CSV в DataFrame.
+    """
+    df = pd.read_csv(DATABASE_FILE)
+    return df
 
-# Функция для регистрации пользователя
+def get_next_user_id(df):
+    """
+    Определяет следующий ID для нового пользователя.
+    Если DataFrame пустой, возвращает базовый ID.
+    """
+    if not df.empty:
+        return int(df['id'].max()) + 1
+    else:
+        return 270897  # ID первого пользователя
+
 def register_user(email, username, password):
-    # Проверки на валидность данных
-    validations = [
-        # Проверяем, что email, username и password не пустые
-        (not email or not username or not password, "Email, username, and password are required."),
-        # Проверяем на длину пароля и имени пользователя
-        (len(password) < 8, "Password must be at least 8 characters long."),
-        (len(username) < 3, "Username must be at least 3 characters long."),
-        # Проверяем формат email, username и password
-        (not match(r"[^@]+@[^@]+\.[^@]+", email), "Invalid email format."),
-        (not match(r"^[a-zA-Z0-9_]+$", username), "Username can only contain letters, numbers, and underscores."),
-        (not match(r"^[a-zA-Z0-9_]+$", password), "Password can only contain letters, numbers, and underscores."),
-        # Проверяем, что email и username не существуют в базе данных
-        (email in [row[1] for row in csv.reader(open(DATABASE_FILE))], "Email already exists."),
-        (username in [row[2] for row in csv.reader(open(DATABASE_FILE))], "Username already exists.")
-    ]
+    """
+    Регистрирует нового пользователя:
+    - Проверяет корректность и уникальность email и username.
+    - Шифрует email, username и password.
+    - Добавляет новую запись в DataFrame и сохраняет в CSV.
+    """
+    # Вычисляем хэши для проверки уникальности
+    email_hash = compute_hash(email)
+    username_hash = compute_hash(username)
+    
+    # Загружаем DataFrame с данными пользователей
+    df = get_users_df()
 
-    # Проверяем каждую валидацию
-    for condition, error_message in validations:
+    # Проверка на существование email или username по их хэшам
+    if email_hash in df['email_hash'].values:
+        raise ValueError("Email already exists.")
+    if username_hash in df['username_hash'].values:
+        raise ValueError("Username already exists.")
+    
+    # Проверка обязательных полей и их формата
+    errors = [
+        ("Email, username, and password are required.", not all([email, username, password])),
+        ("Password must be at least 8 characters long.", len(password) < 8),
+        ("Username must be at least 3 characters long.", len(username) < 3),
+        ("Invalid email format.", not match(r"[^@]+@[^@]+\.[^@]+", email)),
+        ("Username can only contain letters, numbers, and underscores.", not match(r"^[a-zA-Z0-9_]+$", username)),
+        ("Password can only contain letters, numbers, and underscores.", not match(r"^[a-zA-Z0-9_]+$", password)),
+    ]
+    for error_message, condition in errors:
         if condition:
             raise ValueError(error_message)
+
+    # Определяем новый ID
+    user_id = get_next_user_id(df)
     
-    # Если все проверки пройдены, шифруем данные
-    user_id = get_next_user_id()
+    # Шифруем данные пользователя
     encrypted_email = cipher.encrypt(email.encode()).decode()
     encrypted_username = cipher.encrypt(username.encode()).decode()
     encrypted_password = cipher.encrypt(password.encode()).decode()
 
-    with open(DATABASE_FILE, 'a', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow([user_id, encrypted_email, encrypted_username, encrypted_password])
+    # Формируем новую запись в виде словаря
+    new_row = {
+        'id': user_id,
+        'email': encrypted_email,
+        'email_hash': email_hash,
+        'username': encrypted_username,
+        'username_hash': username_hash,
+        'password': encrypted_password
+    }
+    
+    # Преобразуем словарь в DataFrame
+    new_row_df = pd.DataFrame([new_row])
 
+    # Объединяем существующий DataFrame с новым
+    df = pd.concat([df, new_row_df], ignore_index=True)
+    
+    # Сохраняем обновленный DataFrame в CSV
+    df.to_csv(DATABASE_FILE, index=False)
+    
     return True
