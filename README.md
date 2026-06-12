@@ -51,6 +51,26 @@ curl -X POST http://127.0.0.1:8000/recommendations \
 
 Для `POST /recommendations` нужен локальный файл `data/processed/processed_metadata.csv`.
 
+## Конфигурация базы данных
+
+PostgreSQL-подключение настраивается через переменную окружения `PROJECT_OCTOBER_DATABASE_URL`.
+Значение не хранится в коде и не должно попадать в Git.
+
+Пример формата без реальных секретов:
+
+```bash
+export PROJECT_OCTOBER_DATABASE_URL="postgresql+psycopg://<user>@<host>:<port>/<database>"
+```
+
+Alembic использует тот же URL:
+
+```bash
+alembic history
+alembic upgrade head
+```
+
+Пока пользовательские таблицы не созданы. Миграции схемы из DB-001 будут добавлены отдельной задачей DB-003.
+
 ## Проверка текущего рекомендательного прототипа
 
 Если `data/processed/processed_metadata.csv` отсутствует, сначала пересоберите его:
