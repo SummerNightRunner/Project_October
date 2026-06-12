@@ -25,3 +25,8 @@
 - Выполнен `DB-002`: добавлены зависимости `SQLAlchemy`, `Alembic`, `psycopg`, DB-конфигурация через `PROJECT_OCTOBER_DATABASE_URL`, ленивые engine/session helpers и Alembic scaffold без пользовательских таблиц.
 - README, архитектура, decisions, backlog и daily note обновлены под базовую DB-инфраструктуру.
 - Project HQ подтвердил `DB-002` после merge в `main`: локальный запуск `python -m pytest` прошел, 11 тестов успешны.
+- Выполнен `DB-003`: добавлены SQLAlchemy-модели и Alembic revision `db003_user_history_schema` для таблиц `users`, `movie_catalog_entries`, `user_movie_history`, `user_movie_ratings`, `user_preferences`, `api_clients`, `api_keys`, `user_events`.
+- Миграция создает PostgreSQL extensions `pgcrypto` и `citext`, FK/unique/check constraints и индексы из DB-001, включая partial unique index для непустого `users.email`.
+- Добавлены проверки, что `Base.metadata` содержит таблицы пользовательской истории, Alembic env импортирует эти metadata без `PROJECT_OCTOBER_DATABASE_URL`, а ревизия импортируется без подключения к базе.
+- DB-004 и API-004 не реализованы: таблица `movie_catalog_entries` пока не синхронизируется с обработанным каталогом, endpoints пользовательской истории отсутствуют.
+- Проверка `python -m pytest` прошла: 13 тестов успешны; `alembic history` видит `db003_user_history_schema`.

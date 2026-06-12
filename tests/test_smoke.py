@@ -11,6 +11,18 @@ import pytest
 from backend.app.main import app
 
 
+EXPECTED_USER_HISTORY_TABLES = {
+    "users",
+    "movie_catalog_entries",
+    "user_movie_history",
+    "user_movie_ratings",
+    "user_preferences",
+    "api_clients",
+    "api_keys",
+    "user_events",
+}
+
+
 def test_health_returns_ok():
     client = TestClient(app)
 
@@ -18,6 +30,13 @@ def test_health_returns_ok():
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_database_metadata_contains_user_history_tables():
+    from backend.app.db.base import Base
+    from backend.app.db import models  # noqa: F401
+
+    assert EXPECTED_USER_HISTORY_TABLES.issubset(Base.metadata.tables)
 
 
 def test_database_settings_import_without_database_url(monkeypatch):
@@ -54,7 +73,25 @@ def test_alembic_env_imports_without_database_url(monkeypatch):
     spec.loader.exec_module(module)
 
     assert module.target_metadata is Base.metadata
+    assert EXPECTED_USER_HISTORY_TABLES.issubset(module.target_metadata.tables)
     assert module.should_run_migrations() is False
+
+
+def test_user_history_alembic_revision_imports_without_database_connection():
+    module_path = Path("alembic/versions/db003_user_history_schema.py").resolve()
+    spec = importlib.util.spec_from_file_location(
+        "project_october_db003_revision_test", module_path
+    )
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+
+    spec.loader.exec_module(module)
+
+    assert module.revision == "db003_user_history_schema"
+    assert module.down_revision is None
+    assert callable(module.upgrade)
+    assert callable(module.downgrade)
 
 
 def test_recommendations_returns_items(monkeypatch):

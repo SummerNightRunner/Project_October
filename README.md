@@ -69,7 +69,12 @@ alembic history
 alembic upgrade head
 ```
 
-Пока пользовательские таблицы не созданы. Миграции схемы из DB-001 будут добавлены отдельной задачей DB-003.
+Миграция `db003_user_history_schema` создает базовые таблицы пользовательской истории из DB-001:
+`users`, `movie_catalog_entries`, `user_movie_history`, `user_movie_ratings`,
+`user_preferences`, `api_clients`, `api_keys`, `user_events`.
+
+`movie_catalog_entries` пока не синхронизируется с `processed_metadata.csv`; это отдельная задача DB-004.
+Endpoints пользовательской истории и оценок также не реализованы и остаются для API-004.
 
 ## Проверка текущего рекомендательного прототипа
 
