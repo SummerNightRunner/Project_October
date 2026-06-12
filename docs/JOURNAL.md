@@ -10,4 +10,5 @@
 - Текущий recommendation prototype сохранен и продолжает жить отдельно от API-слоя.
 - Добавлены smoke-тесты для `GET /health` и текущего recommendation example.
 - README дополнен командой запуска тестов.
+- Project HQ подтвердил `TEST-001`: локальный запуск `python -m pytest` прошел, 2 теста успешны.
 - Следующий шаг: обернуть recommendation function в `POST /recommendations`.
