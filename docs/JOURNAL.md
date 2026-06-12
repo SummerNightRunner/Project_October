@@ -14,3 +14,6 @@
 - Выполнен `API-002`: добавлен `POST /recommendations` с Pydantic-валидацией `liked_movie_ids`, `include_adult`, `limit`; endpoint вызывает текущую рекомендательную функцию и возвращает список рекомендаций.
 - `docs/API_SPEC.md`, smoke-тесты и README обновлены под новый endpoint.
 - Project HQ подтвердил `API-002` после merge в `main`: локальный запуск `python -m pytest` прошел, 5 тестов успешны.
+- Выполнен `API-003`: добавлен `GET /movies/search` с поиском по локальному `processed_metadata.csv`, поддержкой `PROJECT_OCTOBER_PROCESSED_METADATA`, валидацией `query` и `limit`, стабильным ответом `items` и ошибкой `503` при недоступном каталоге.
+- `docs/API_SPEC.md`, README, backlog, daily note и smoke-тесты обновлены под поиск фильмов.
+- Проверка `python -m pytest` прошла: 9 тестов успешны.

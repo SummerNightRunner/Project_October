@@ -1,10 +1,18 @@
+import os
+from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 
 
 app = FastAPI(title="Project October API")
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_PROCESSED_METADATA_PATH = (
+    PROJECT_ROOT / "data" / "processed" / "processed_metadata.csv"
+)
+PROCESSED_METADATA_ENV = "PROJECT_OCTOBER_PROCESSED_METADATA"
 
 
 class RecommendationsRequest(BaseModel):
@@ -35,9 +43,81 @@ class RecommendationsResponse(BaseModel):
     items: list[RecommendationItem]
 
 
+class MovieSearchItem(BaseModel):
+    id: str
+    title: str
+    vote_average: float | None = None
+
+
+class MovieSearchResponse(BaseModel):
+    items: list[MovieSearchItem]
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+def get_processed_metadata_path() -> Path:
+    return Path(os.environ.get(PROCESSED_METADATA_ENV, DEFAULT_PROCESSED_METADATA_PATH))
+
+
+def search_movies_in_catalog(query: str, limit: int) -> list[dict[str, Any]]:
+    import pandas as pd
+
+    metadata_path = get_processed_metadata_path()
+    if not metadata_path.exists():
+        raise FileNotFoundError(metadata_path)
+
+    movies_df = pd.read_csv(metadata_path, low_memory=False)
+    title_column = "original_title" if "original_title" in movies_df.columns else "title"
+    required_columns = {"id", title_column, "vote_average"}
+    if not required_columns.issubset(movies_df.columns):
+        raise ValueError("Movie catalog data has an unsupported schema.")
+
+    titles = movies_df[title_column].fillna("").astype(str)
+    matches = movies_df[
+        titles.str.casefold().str.contains(query.casefold(), regex=False, na=False)
+    ].head(limit)
+
+    items = []
+    for _, row in matches.iterrows():
+        vote_average = row["vote_average"]
+        items.append(
+            {
+                "id": str(row["id"]),
+                "title": str(row[title_column]),
+                "vote_average": None
+                if pd.isna(vote_average)
+                else float(vote_average),
+            }
+        )
+    return items
+
+
+@app.get("/movies/search", response_model=MovieSearchResponse)
+def search_movies(
+    query: str = Query(..., min_length=1),
+    limit: int = Query(default=20, ge=1, le=100),
+) -> MovieSearchResponse:
+    normalized_query = query.strip()
+    if not normalized_query:
+        raise HTTPException(status_code=422, detail="query must not be empty.")
+
+    try:
+        items = search_movies_in_catalog(query=normalized_query, limit=limit)
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Movie catalog data is not available. "
+                "Build data/processed/processed_metadata.csv first."
+            ),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    return MovieSearchResponse(items=items)
 
 
 def build_recommendations(

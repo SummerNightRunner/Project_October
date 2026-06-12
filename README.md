@@ -33,6 +33,14 @@ curl http://127.0.0.1:8000/health
 {"status":"ok"}
 ```
 
+Пример поиска фильмов:
+
+```bash
+curl "http://127.0.0.1:8000/movies/search?query=toy&limit=5"
+```
+
+Для `GET /movies/search` нужен локальный файл `data/processed/processed_metadata.csv`.
+
 Пример запроса рекомендаций:
 
 ```bash

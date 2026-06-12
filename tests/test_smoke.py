@@ -95,6 +95,75 @@ def test_recommendations_returns_400_when_movie_ids_are_unknown(monkeypatch):
     assert response.json() == {"detail": "No valid movie IDs provided."}
 
 
+def test_movies_search_returns_items_from_processed_metadata(tmp_path, monkeypatch):
+    processed_metadata_path = tmp_path / "processed_metadata.csv"
+    fieldnames = ["id", "original_title", "vote_average"]
+    rows = [
+        {"id": "862", "original_title": "Toy Story", "vote_average": "7.7"},
+        {"id": "863", "original_title": "Toy Story 2", "vote_average": "7.5"},
+        {"id": "8844", "original_title": "Jumanji", "vote_average": "6.9"},
+    ]
+
+    with processed_metadata_path.open("w", newline="") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    monkeypatch.setenv(
+        "PROJECT_OCTOBER_PROCESSED_METADATA", str(processed_metadata_path)
+    )
+    client = TestClient(app)
+
+    response = client.get("/movies/search", params={"query": "toy", "limit": 1})
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "items": [
+            {
+                "id": "862",
+                "title": "Toy Story",
+                "vote_average": 7.7,
+            }
+        ]
+    }
+
+
+def test_movies_search_rejects_blank_query():
+    client = TestClient(app)
+
+    response = client.get("/movies/search", params={"query": "   "})
+
+    assert response.status_code == 422
+
+
+def test_movies_search_rejects_invalid_limit():
+    client = TestClient(app)
+
+    response = client.get("/movies/search", params={"query": "toy", "limit": 0})
+
+    assert response.status_code == 422
+
+
+def test_movies_search_returns_503_when_processed_metadata_is_missing(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv(
+        "PROJECT_OCTOBER_PROCESSED_METADATA",
+        str(tmp_path / "missing_processed_metadata.csv"),
+    )
+    client = TestClient(app)
+
+    response = client.get("/movies/search", params={"query": "toy"})
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": (
+            "Movie catalog data is not available. "
+            "Build data/processed/processed_metadata.csv first."
+        )
+    }
+
+
 def test_recommendations_example_runs_with_fixture(tmp_path):
     processed_metadata_path = tmp_path / "processed_metadata.csv"
     fieldnames = [
