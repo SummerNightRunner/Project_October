@@ -30,3 +30,4 @@
 - Добавлены проверки, что `Base.metadata` содержит таблицы пользовательской истории, Alembic env импортирует эти metadata без `PROJECT_OCTOBER_DATABASE_URL`, а ревизия импортируется без подключения к базе.
 - DB-004 и API-004 не реализованы: таблица `movie_catalog_entries` пока не синхронизируется с обработанным каталогом, endpoints пользовательской истории отсутствуют.
 - Проверка `python -m pytest` прошла: 13 тестов успешны; `alembic history` видит `db003_user_history_schema`.
+- Project HQ подтвердил `DB-003` после merge в `main`: локальный запуск `python -m pytest` прошел, 13 тестов успешны; `alembic history` показывает `db003_user_history_schema`.
