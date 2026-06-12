@@ -1,4 +1,5 @@
 import ast
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -8,7 +9,10 @@ from sklearn.preprocessing import MultiLabelBinarizer
 import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-PROCESSED_METADATA_PATH = PROJECT_ROOT / "data" / "processed" / "processed_metadata.csv"
+DEFAULT_PROCESSED_METADATA_PATH = PROJECT_ROOT / "data" / "processed" / "processed_metadata.csv"
+PROCESSED_METADATA_PATH = Path(
+    os.environ.get("PROJECT_OCTOBER_PROCESSED_METADATA", DEFAULT_PROCESSED_METADATA_PATH)
+)
 
 
 def parse_list_cell(value):

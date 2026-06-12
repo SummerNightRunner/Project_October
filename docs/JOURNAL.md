@@ -8,4 +8,6 @@
 - Старый интерактивный CLI в `backend/app.py` заменен на минимальный FastAPI app с `GET /health`.
 - Добавлен `requirements.txt` для локального запуска backend.
 - Текущий recommendation prototype сохранен и продолжает жить отдельно от API-слоя.
-- Следующий шаг: добавить smoke-тесты и затем обернуть recommendation function в `POST /recommendations`.
+- Добавлены smoke-тесты для `GET /health` и текущего recommendation example.
+- README дополнен командой запуска тестов.
+- Следующий шаг: обернуть recommendation function в `POST /recommendations`.

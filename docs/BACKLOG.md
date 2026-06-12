@@ -10,7 +10,7 @@
 | OCT-002 | P0 | Done | Восстановить минимальный набор проектной документации | Есть project brief, roadmap, API spec, decisions, architecture, process, backlog и journal |
 | API-001 | P0 | Done | Создать FastAPI skeleton с `GET /health` | `backend/app.py` содержит FastAPI app; добавлен `requirements.txt`; README описывает запуск |
 | OCT-003 | P1 | Todo | Описать текущий Python-прототип и точки входа подробнее | Понятно, какие скрипты отвечают за препроцессинг, рейтинги, регистрацию и рекомендации |
-| TEST-001 | P1 | Todo | Добавить smoke-проверку для текущего рекомендательного сценария | Есть воспроизводимый тест/команда для рекомендаций |
+| TEST-001 | P1 | Done | Добавить smoke-проверку для текущего рекомендательного сценария | Есть smoke-тесты для `GET /health` и текущего recommendation example |
 | API-002 | P1 | Todo | Добавить `POST /recommendations` | API вызывает текущую recommendation function через стабильную схему запроса/ответа |
 
 ## Далее
