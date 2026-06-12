@@ -13,3 +13,4 @@
 - Project HQ подтвердил `TEST-001`: локальный запуск `python -m pytest` прошел, 2 теста успешны.
 - Выполнен `API-002`: добавлен `POST /recommendations` с Pydantic-валидацией `liked_movie_ids`, `include_adult`, `limit`; endpoint вызывает текущую рекомендательную функцию и возвращает список рекомендаций.
 - `docs/API_SPEC.md`, smoke-тесты и README обновлены под новый endpoint.
+- Project HQ подтвердил `API-002` после merge в `main`: локальный запуск `python -m pytest` прошел, 5 тестов успешны.
