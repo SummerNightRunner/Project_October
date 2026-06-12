@@ -17,6 +17,84 @@ def test_health_returns_ok():
     assert response.json() == {"status": "ok"}
 
 
+def test_recommendations_returns_items(monkeypatch):
+    def fake_build_recommendations(liked_movie_ids, include_adult, limit):
+        assert liked_movie_ids == ["862", "8844"]
+        assert include_adult is False
+        assert limit == 2
+        return [
+            {
+                "id": "15602",
+                "title": "Grumpier Old Men",
+                "vote_average": 6.5,
+                "site_user_rating": "No rating",
+            }
+        ]
+
+    monkeypatch.setattr(
+        "backend.app.main.build_recommendations", fake_build_recommendations
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/recommendations",
+        json={
+            "liked_movie_ids": ["862", "8844"],
+            "include_adult": False,
+            "limit": 2,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "items": [
+            {
+                "id": "15602",
+                "title": "Grumpier Old Men",
+                "vote_average": 6.5,
+                "site_user_rating": "No rating",
+            }
+        ]
+    }
+
+
+def test_recommendations_rejects_empty_liked_movie_ids():
+    client = TestClient(app)
+
+    response = client.post(
+        "/recommendations",
+        json={
+            "liked_movie_ids": [],
+            "include_adult": False,
+            "limit": 20,
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_recommendations_returns_400_when_movie_ids_are_unknown(monkeypatch):
+    def fake_build_recommendations(liked_movie_ids, include_adult, limit):
+        raise ValueError("No valid movie IDs provided.")
+
+    monkeypatch.setattr(
+        "backend.app.main.build_recommendations", fake_build_recommendations
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/recommendations",
+        json={
+            "liked_movie_ids": ["missing"],
+            "include_adult": False,
+            "limit": 20,
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "No valid movie IDs provided."}
+
+
 def test_recommendations_example_runs_with_fixture(tmp_path):
     processed_metadata_path = tmp_path / "processed_metadata.csv"
     fieldnames = [

@@ -33,6 +33,16 @@ curl http://127.0.0.1:8000/health
 {"status":"ok"}
 ```
 
+Пример запроса рекомендаций:
+
+```bash
+curl -X POST http://127.0.0.1:8000/recommendations \
+  -H "Content-Type: application/json" \
+  -d '{"liked_movie_ids":["862","8844"],"include_adult":false,"limit":5}'
+```
+
+Для `POST /recommendations` нужен локальный файл `data/processed/processed_metadata.csv`.
+
 ## Проверка текущего рекомендательного прототипа
 
 Если `data/processed/processed_metadata.csv` отсутствует, сначала пересоберите его:

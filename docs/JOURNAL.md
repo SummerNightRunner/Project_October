@@ -11,4 +11,5 @@
 - Добавлены дымовые тесты для `GET /health` и текущего примера рекомендаций.
 - README дополнен командой запуска тестов.
 - Project HQ подтвердил `TEST-001`: локальный запуск `python -m pytest` прошел, 2 теста успешны.
-- Следующий шаг: обернуть рекомендательную функцию в `POST /recommendations`.
+- Выполнен `API-002`: добавлен `POST /recommendations` с Pydantic-валидацией `liked_movie_ids`, `include_adult`, `limit`; endpoint вызывает текущую рекомендательную функцию и возвращает список рекомендаций.
+- `docs/API_SPEC.md`, smoke-тесты и README обновлены под новый endpoint.
