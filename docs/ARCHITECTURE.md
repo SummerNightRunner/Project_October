@@ -253,6 +253,10 @@ api_clients
 backend/
   app/
     __init__.py
+    db/
+      base.py
+      config.py
+      session.py
     main.py
   recommendations_func.py
   data_preprocessor.py
@@ -260,7 +264,16 @@ backend/
   user_registration.py
 ```
 
-Когда API начнет расти, можно перейти к более явной пакетной структуре:
+DB-002 добавляет базовую инфраструктуру PostgreSQL без реализации пользовательских таблиц:
+
+- `backend/app/db/config.py` читает `PROJECT_OCTOBER_DATABASE_URL` и не содержит секретов или локальных DSN;
+- `backend/app/db/base.py` содержит общий `Base` для будущих SQLAlchemy ORM-моделей;
+- `backend/app/db/session.py` создает SQLAlchemy engine/session лениво, чтобы импорт FastAPI app не требовал доступной базы;
+- `alembic/` содержит окружение миграций, которое использует metadata из `Base` и URL из переменной окружения.
+
+Модели и миграции таблиц из DB-001 должны добавляться в DB-003. До этого существующие endpoints продолжают работать поверх локального обработанного каталога.
+
+Когда API начнет расти дальше, можно перейти к более явной пакетной структуре:
 
 ```text
 backend/

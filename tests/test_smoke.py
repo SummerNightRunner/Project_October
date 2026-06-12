@@ -1,9 +1,12 @@
 import csv
+import importlib.util
 import os
+from pathlib import Path
 import subprocess
 import sys
 
 from fastapi.testclient import TestClient
+import pytest
 
 from backend.app.main import app
 
@@ -15,6 +18,43 @@ def test_health_returns_ok():
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_database_settings_import_without_database_url(monkeypatch):
+    from backend.app.db.config import (
+        DATABASE_URL_ENV,
+        get_database_settings,
+        require_database_url,
+    )
+
+    monkeypatch.delenv(DATABASE_URL_ENV, raising=False)
+    get_database_settings.cache_clear()
+
+    settings = get_database_settings()
+
+    assert settings.database_url is None
+    with pytest.raises(RuntimeError, match=DATABASE_URL_ENV):
+        require_database_url(settings)
+
+
+def test_alembic_env_imports_without_database_url(monkeypatch):
+    from backend.app.db.base import Base
+    from backend.app.db.config import DATABASE_URL_ENV, get_database_settings
+
+    monkeypatch.delenv(DATABASE_URL_ENV, raising=False)
+    get_database_settings.cache_clear()
+    module_path = Path("alembic/env.py").resolve()
+    spec = importlib.util.spec_from_file_location(
+        "project_october_alembic_env_test", module_path
+    )
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+
+    spec.loader.exec_module(module)
+
+    assert module.target_metadata is Base.metadata
+    assert module.should_run_migrations() is False
 
 
 def test_recommendations_returns_items(monkeypatch):

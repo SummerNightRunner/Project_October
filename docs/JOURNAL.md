@@ -22,3 +22,5 @@
 - В `docs/API_SPEC.md` добавлены черновые будущие контракты для истории, оценок, предпочтений и API-key доступа.
 - В backlog добавлены follow-up задачи `DB-002`, `DB-003`, `DB-004`, `API-004`, `API-005`.
 - Project HQ подтвердил `DB-001` после merge в `main`: локальный запуск `python -m pytest` прошел, 9 тестов успешны.
+- Выполнен `DB-002`: добавлены зависимости `SQLAlchemy`, `Alembic`, `psycopg`, DB-конфигурация через `PROJECT_OCTOBER_DATABASE_URL`, ленивые engine/session helpers и Alembic scaffold без пользовательских таблиц.
+- README, архитектура, decisions, backlog и daily note обновлены под базовую DB-инфраструктуру.
