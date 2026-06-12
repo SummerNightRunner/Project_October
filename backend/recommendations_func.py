@@ -158,6 +158,7 @@ def get_recommendations(selected_movie_ids, include_adult=False, top_n=20,
         if movie_id in selected_movie_ids:
             continue
         recommendations.append({
+            'id': str(movie_id),
             'title': movies_df_filtered.iloc[idx]['original_title'],
             'vote_average': movies_df_filtered.iloc[idx]['vote_average'],
             'site_user_rating': movies_df_filtered.iloc[idx]['avg_people_rating'],
