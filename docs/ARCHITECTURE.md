@@ -27,6 +27,224 @@ FastAPI backend
 PostgreSQL
 ```
 
+## PostgreSQL-схема пользовательской истории
+
+DB-001 фиксирует целевую схему хранения пользовательского состояния. Это проектный контракт для будущих миграций; в текущей задаче база, миграции и backend-подключение не реализуются.
+
+Основные правила:
+
+- PostgreSQL хранит только состояние приложения: пользователей, историю, оценки, ручные предпочтения, API-доступ и события.
+- Raw CSV и `data/processed/processed_metadata.csv` не становятся пользовательским состоянием.
+- Пользовательские таблицы ссылаются на локальный каталог через `catalog_movie_id`.
+- `catalog_movie_id` - строковое значение из колонки `id` в `data/processed/processed_metadata.csv`; оно соответствует текущему `movie_id` в API.
+- Перед записью истории backend должен проверять, что `catalog_movie_id` существует в локальном обработанном каталоге или в синхронизированной таблице `movie_catalog_entries`.
+
+### Таблицы
+
+#### `users`
+
+Аккаунт пользователя приложения. Пароли и внешние identity-провайдеры не проектируются в DB-001.
+
+| Поле | Тип | Обязательное | Описание |
+| --- | --- | --- | --- |
+| `id` | `uuid` | да | Primary key, генерируется приложением или `gen_random_uuid()` |
+| `email` | `citext` | нет | Уникальный email, появится при полноценной авторизации |
+| `display_name` | `text` | нет | Имя для интерфейса |
+| `status` | `text` | да | `active`, `disabled`, `deleted` |
+| `created_at` | `timestamptz` | да | Время создания |
+| `updated_at` | `timestamptz` | да | Время последнего изменения |
+
+Ограничения и индексы:
+
+- `primary key (id)`;
+- `unique (email)` для непустых email;
+- индекс `users_status_idx` по `status`.
+
+#### `movie_catalog_entries`
+
+Минимальная проекция локального каталога фильмов для ссылочной целостности пользовательских данных. Таблица не заменяет `data/processed/processed_metadata.csv` и не хранит признаки рекомендательной модели.
+
+| Поле | Тип | Обязательное | Описание |
+| --- | --- | --- | --- |
+| `catalog_movie_id` | `text` | да | Primary key; значение `id` из `processed_metadata.csv` |
+| `title_snapshot` | `text` | нет | Название на момент синхронизации, только для диагностики и админских экранов |
+| `release_date` | `date` | нет | Дата релиза, если есть в обработанном каталоге |
+| `source_catalog_version` | `text` | нет | Версия или идентификатор сборки обработанного каталога |
+| `created_at` | `timestamptz` | да | Время первой синхронизации |
+| `updated_at` | `timestamptz` | да | Время последней синхронизации |
+
+Ограничения и индексы:
+
+- `primary key (catalog_movie_id)`;
+- индекс `movie_catalog_entries_title_idx` по `title_snapshot` опционален и нужен только для админских задач.
+
+#### `user_movie_history`
+
+Факты пользовательской истории по фильмам: просмотрено, запланировано, брошено. Для MVP основной статус - `watched`.
+
+| Поле | Тип | Обязательное | Описание |
+| --- | --- | --- | --- |
+| `id` | `uuid` | да | Primary key |
+| `user_id` | `uuid` | да | FK на `users.id` |
+| `catalog_movie_id` | `text` | да | FK на `movie_catalog_entries.catalog_movie_id` |
+| `status` | `text` | да | `watched`, `planned`, `dropped` |
+| `watched_at` | `timestamptz` | нет | Когда пользователь посмотрел фильм; для импорта может быть неизвестно |
+| `source` | `text` | да | `manual`, `csv_import`, `api`, `system` |
+| `notes` | `text` | нет | Пользовательская заметка |
+| `created_at` | `timestamptz` | да | Время создания записи |
+| `updated_at` | `timestamptz` | да | Время последнего изменения |
+
+Ограничения и индексы:
+
+- `foreign key (user_id) references users(id) on delete cascade`;
+- `foreign key (catalog_movie_id) references movie_catalog_entries(catalog_movie_id)`;
+- `unique (user_id, catalog_movie_id)`, чтобы один фильм имел одну актуальную запись истории пользователя;
+- индекс `user_movie_history_user_status_idx` по `(user_id, status)`;
+- индекс `user_movie_history_user_watched_at_idx` по `(user_id, watched_at desc)`.
+
+#### `user_movie_ratings`
+
+Пользовательские оценки фильмов. Оценка отделена от истории, потому что фильм может быть оценен без точной даты просмотра, а история может быть записана без оценки.
+
+| Поле | Тип | Обязательное | Описание |
+| --- | --- | --- | --- |
+| `id` | `uuid` | да | Primary key |
+| `user_id` | `uuid` | да | FK на `users.id` |
+| `catalog_movie_id` | `text` | да | FK на `movie_catalog_entries.catalog_movie_id` |
+| `rating_value` | `numeric(3,1)` | да | Нормализованная оценка в шкале `0..10` |
+| `rated_at` | `timestamptz` | нет | Когда пользователь поставил оценку |
+| `source` | `text` | да | `manual`, `csv_import`, `api`, `system` |
+| `created_at` | `timestamptz` | да | Время создания |
+| `updated_at` | `timestamptz` | да | Время последнего изменения |
+
+Ограничения и индексы:
+
+- `check (rating_value >= 0 and rating_value <= 10)`;
+- `foreign key (user_id) references users(id) on delete cascade`;
+- `foreign key (catalog_movie_id) references movie_catalog_entries(catalog_movie_id)`;
+- `unique (user_id, catalog_movie_id)`, чтобы хранить одну актуальную оценку пользователя на фильм;
+- индекс `user_movie_ratings_user_rating_idx` по `(user_id, rating_value desc)`;
+- индекс `user_movie_ratings_movie_idx` по `catalog_movie_id`.
+
+#### `user_preferences`
+
+Ручные предпочтения пользователя, которые дополняют историю и оценки.
+
+| Поле | Тип | Обязательное | Описание |
+| --- | --- | --- | --- |
+| `id` | `uuid` | да | Primary key |
+| `user_id` | `uuid` | да | FK на `users.id` |
+| `preference_type` | `text` | да | `genre`, `keyword`, `person`, `language`, `adult_content`, `animation`, `free_text` |
+| `preference_key` | `text` | да | Машиночитаемый ключ, например жанр или язык |
+| `weight` | `numeric(4,2)` | да | Вес от `-10.00` до `10.00`; отрицательный вес означает нежелательное предпочтение |
+| `source` | `text` | да | `manual`, `csv_import`, `api`, `system` |
+| `is_active` | `boolean` | да | Включено ли предпочтение |
+| `created_at` | `timestamptz` | да | Время создания |
+| `updated_at` | `timestamptz` | да | Время последнего изменения |
+
+Ограничения и индексы:
+
+- `check (weight >= -10 and weight <= 10)`;
+- `foreign key (user_id) references users(id) on delete cascade`;
+- `unique (user_id, preference_type, preference_key)`;
+- индекс `user_preferences_user_active_idx` по `(user_id, is_active)`;
+- индекс `user_preferences_type_key_idx` по `(preference_type, preference_key)`.
+
+#### `api_clients`
+
+Сторонний проект или внутренний сервис, которому разрешен API-доступ.
+
+| Поле | Тип | Обязательное | Описание |
+| --- | --- | --- | --- |
+| `id` | `uuid` | да | Primary key |
+| `owner_user_id` | `uuid` | нет | FK на `users.id`, если ключ принадлежит конкретному пользователю или разработчику |
+| `name` | `text` | да | Название интеграции |
+| `contact_email` | `citext` | нет | Контакт владельца интеграции |
+| `status` | `text` | да | `active`, `disabled`, `deleted` |
+| `created_at` | `timestamptz` | да | Время создания |
+| `updated_at` | `timestamptz` | да | Время последнего изменения |
+
+Ограничения и индексы:
+
+- `foreign key (owner_user_id) references users(id) on delete set null`;
+- индекс `api_clients_owner_idx` по `owner_user_id`;
+- индекс `api_clients_status_idx` по `status`.
+
+#### `api_keys`
+
+API-ключи для сторонних проектов. Секрет целиком не хранится в базе: сохраняются только `key_prefix` для поиска и `key_hash` для проверки.
+
+| Поле | Тип | Обязательное | Описание |
+| --- | --- | --- | --- |
+| `id` | `uuid` | да | Primary key |
+| `api_client_id` | `uuid` | да | FK на `api_clients.id` |
+| `key_prefix` | `text` | да | Небольшой открытый префикс ключа для поиска и поддержки |
+| `key_hash` | `text` | да | Хеш полного ключа |
+| `scopes` | `text[]` | да | Разрешения, например `recommendations:read`, `history:write` |
+| `status` | `text` | да | `active`, `revoked`, `expired` |
+| `expires_at` | `timestamptz` | нет | Срок действия |
+| `last_used_at` | `timestamptz` | нет | Последнее успешное использование |
+| `created_at` | `timestamptz` | да | Время создания |
+| `revoked_at` | `timestamptz` | нет | Время отзыва |
+
+Ограничения и индексы:
+
+- `foreign key (api_client_id) references api_clients(id) on delete cascade`;
+- `unique (key_prefix)`;
+- индекс `api_keys_client_status_idx` по `(api_client_id, status)`;
+- индекс `api_keys_expires_at_idx` по `expires_at`.
+
+#### `user_events`
+
+Журнал действий для аудита, отладки импортов и будущей аналитики. Это не источник истины для текущей истории или оценок.
+
+| Поле | Тип | Обязательное | Описание |
+| --- | --- | --- | --- |
+| `id` | `uuid` | да | Primary key |
+| `user_id` | `uuid` | нет | FK на `users.id`, если событие связано с пользователем |
+| `api_client_id` | `uuid` | нет | FK на `api_clients.id`, если событие пришло через API-клиента |
+| `event_type` | `text` | да | Например `history.added`, `rating.updated`, `preferences.changed`, `api_key.used` |
+| `catalog_movie_id` | `text` | нет | FK на `movie_catalog_entries.catalog_movie_id`, если событие связано с фильмом |
+| `payload` | `jsonb` | да | Небольшой контекст события без секретов и приватных сырых импортов |
+| `request_id` | `text` | нет | Идентификатор запроса для трассировки |
+| `created_at` | `timestamptz` | да | Время события |
+
+Ограничения и индексы:
+
+- `foreign key (user_id) references users(id) on delete set null`;
+- `foreign key (api_client_id) references api_clients(id) on delete set null`;
+- `foreign key (catalog_movie_id) references movie_catalog_entries(catalog_movie_id)`;
+- индекс `user_events_user_created_idx` по `(user_id, created_at desc)`;
+- индекс `user_events_type_created_idx` по `(event_type, created_at desc)`;
+- индекс `user_events_request_id_idx` по `request_id`.
+
+### Связи
+
+```text
+users
+  1 ├── n user_movie_history ── n:1 movie_catalog_entries
+  1 ├── n user_movie_ratings ── n:1 movie_catalog_entries
+  1 ├── n user_preferences
+  1 ├── n api_clients
+  1 └── n user_events
+
+api_clients
+  1 ├── n api_keys
+  1 └── n user_events
+```
+
+### Связь с локальным каталогом фильмов
+
+Текущий API принимает и возвращает `id` как строку из `processed_metadata.csv`. В базе этот идентификатор называется `catalog_movie_id`, чтобы не смешивать его с surrogate key таблиц.
+
+План интеграции:
+
+1. `GET /movies/search` продолжает искать по `data/processed/processed_metadata.csv`.
+2. Перед записью пользовательской истории backend проверяет `catalog_movie_id` по локальному каталогу.
+3. После появления миграций отдельная задача синхронизирует минимальный список фильмов в `movie_catalog_entries`.
+4. Рекомендательный сервис использует пользовательские `catalog_movie_id` как вход в текущую content-based модель.
+5. Если позже появятся TMDB или другие внешние ID, они добавляются отдельной таблицей сопоставления или расширением `movie_catalog_entries`, без изменения пользовательских таблиц.
+
 ## Backend-структура
 
 Текущая ближайшая структура:

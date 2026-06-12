@@ -17,3 +17,7 @@
 - Выполнен `API-003`: добавлен `GET /movies/search` с поиском по локальному `processed_metadata.csv`, поддержкой `PROJECT_OCTOBER_PROCESSED_METADATA`, валидацией `query` и `limit`, стабильным ответом `items` и ошибкой `503` при недоступном каталоге.
 - `docs/API_SPEC.md`, README, backlog, daily note и smoke-тесты обновлены под поиск фильмов.
 - Проверка `python -m pytest` прошла: 9 тестов успешны.
+- Выполнен `DB-001`: спроектирована PostgreSQL-схема пользовательской истории без изменения backend-кода и данных.
+- Зафиксированы таблицы `users`, `movie_catalog_entries`, `user_movie_history`, `user_movie_ratings`, `user_preferences`, `api_clients`, `api_keys`, `user_events`.
+- В `docs/API_SPEC.md` добавлены черновые будущие контракты для истории, оценок, предпочтений и API-key доступа.
+- В backlog добавлены follow-up задачи `DB-002`, `DB-003`, `DB-004`, `API-004`, `API-005`.
