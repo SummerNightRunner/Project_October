@@ -92,3 +92,81 @@ curl "http://127.0.0.1:8000/movies/search?query=toy&limit=5"
 
 - `422`: `query` отсутствует или пустой после удаления пробелов, либо `limit` вне диапазона `1..100`;
 - `503`: локальный файл `data/processed/processed_metadata.csv` недоступен или имеет неподдерживаемую схему.
+
+## Будущие контракты пользовательской истории
+
+Статус: проектный черновик DB-001, endpoints не реализованы.
+
+Будущие endpoints должны использовать `movie_id` как публичное API-имя локального идентификатора фильма. В PostgreSQL этому полю соответствует `catalog_movie_id`, равный строковому `id` из `data/processed/processed_metadata.csv`.
+
+### `GET /users/{user_id}/history`
+
+Возвращает историю пользователя.
+
+Query-параметры:
+
+- `status`: опциональный фильтр `watched`, `planned`, `dropped`;
+- `limit`: число элементов от `1` до `100`, по умолчанию `20`.
+
+Черновик ответа `200`:
+
+```json
+{
+  "items": [
+    {
+      "movie_id": "862",
+      "status": "watched",
+      "watched_at": "2026-06-13T12:00:00Z",
+      "rating_value": 9.0,
+      "source": "manual"
+    }
+  ]
+}
+```
+
+### `PUT /users/{user_id}/history/{movie_id}`
+
+Создает или обновляет запись истории пользователя по локальному фильму.
+
+Черновик запроса:
+
+```json
+{
+  "status": "watched",
+  "watched_at": "2026-06-13T12:00:00Z",
+  "source": "manual",
+  "notes": "Пересмотреть позже"
+}
+```
+
+### `PUT /users/{user_id}/ratings/{movie_id}`
+
+Создает или обновляет пользовательскую оценку фильма.
+
+Черновик запроса:
+
+```json
+{
+  "rating_value": 8.5,
+  "rated_at": "2026-06-13T12:05:00Z",
+  "source": "manual"
+}
+```
+
+### `PUT /users/{user_id}/preferences/{preference_type}/{preference_key}`
+
+Создает или обновляет ручное предпочтение пользователя.
+
+Черновик запроса:
+
+```json
+{
+  "weight": 2.0,
+  "source": "manual",
+  "is_active": true
+}
+```
+
+### API-доступ сторонних проектов
+
+Будущие публичные endpoints для сторонних проектов должны принимать API-ключ через `Authorization: Bearer <api_key>`. Реализация должна проверять `key_prefix`, `key_hash`, `status`, `expires_at` и `scopes`.
