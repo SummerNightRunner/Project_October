@@ -1,86 +1,36 @@
-# Project Process
+# Process
 
-## Operating Model
+## Рабочая схема
 
-Use one main Codex thread as Project HQ and separate task threads for implementation.
+- Этот диалог используется как Project HQ.
+- Project HQ отвечает за планирование, backlog, journal, roadmap, риски и порядок задач.
+- Реализация делается отдельными task-диалогами или отдельными ветками.
+- Все ответы, планы, ревью и проектные заметки пишутся на русском.
 
-Default language for Codex-facing project work is Russian. Codex should write user-facing plans, statuses, reviews, summaries, and project-management notes in Russian. English is acceptable for code, commands, file names, API fields, package names, and established technical identifiers.
+## Ежедневный цикл
 
-Project HQ is for:
+1. Проверить `docs/BACKLOG.md`, `docs/JOURNAL.md`, последнюю daily note и `git status`.
+2. Выбрать одну первую задачу.
+3. Выполнить ее отдельным task-диалогом.
+4. Вернуться в Project HQ.
+5. Обновить journal/backlog/daily.
 
-- daily planning;
-- roadmap and backlog grooming;
-- architecture discussion;
-- project journal updates;
-- task creation and prioritization;
-- end-of-day summaries.
+## Git Policy
 
-Task threads are for:
+Можно:
 
-- implementing one scoped change;
-- reviewing one diff;
-- debugging one failure;
-- researching one integration;
-- producing one design or API contract.
+- коммитить и пушить безопасные изменения;
+- создавать task-ветки;
+- мерджить и удалять локальные task-ветки, если риск низкий.
 
-## Daily Loop
+Нельзя пушить без явного решения:
 
-1. Open Project HQ.
-2. Ask the Project Secretary prompt to read `docs/ROADMAP.md`, `docs/BACKLOG.md`, and `docs/JOURNAL.md`.
-3. Generate 3-5 tasks for the day.
-4. Pick one task.
-5. Start a separate task thread with `docs/prompts/task-implementation.md`.
-6. After completion, update the relevant docs.
-7. End the day with `docs/prompts/end-of-day.md`.
+- `AGENTS.md`;
+- `docs/prompts/`;
+- секреты;
+- локальные базы;
+- `data/processed/`;
+- embeddings/vector indexes/model checkpoints/experiment runs;
+- приватные пользовательские данные.
 
-## Task Format
-
-Every implementation task should include:
-
-- Goal.
-- Context.
-- Constraints.
-- Files likely involved.
-- Done when.
-- Verification.
-
-## Branch And Worktree Guidance
-
-- Use a separate branch or Codex worktree for large tasks.
-- Keep small documentation-only changes in the local checkout if no code work is in progress.
-- Do not mix unrelated backend, frontend, ML, and documentation changes in the same task.
-- Agents may create branches, commit completed work, push safe changes to `origin`, and clean up local branches when useful.
-- Agents should ask the user before a merge request or pull request is needed; the user will create it.
-- Avoid force pushes, shared-branch rebases, remote branch deletion, or direct protected-branch updates unless the user explicitly approves.
-- Local Codex instruction files can guide all dialogs, but they are not automatically remote-facing project artifacts.
-
-## What Belongs In Remote Git
-
-Commit and push:
-
-- source code;
-- tests;
-- project documentation;
-- API specs;
-- architecture decisions;
-- templates and setup docs;
-- safe sample configuration files.
-
-Do not commit or push:
-
-- secrets, tokens, credentials, or API keys;
-- `data/key/secret.key`;
-- `data/users.csv`;
-- local databases such as `*.db`, `*.sqlite`, `*.sqlite3`;
-- local Codex state such as `.codex/` or files from `~/.codex`;
-- local neural-network/agent instructions such as `AGENTS.md`, `AGENTS.override.md`, and `docs/prompts/` unless the user explicitly approves publishing them;
-- model checkpoints, embeddings, vector indexes, experiment outputs, or generated ML artifacts unless explicitly approved;
-- private user history or personal imported watch data.
-
-## Documentation Rules
-
-- Product changes go to `docs/PROJECT_BRIEF.md` or `docs/ROADMAP.md`.
-- API changes go to `docs/API_SPEC.md`.
-- Architecture choices go to `docs/ARCHITECTURE.md` and `docs/DECISIONS.md`.
-- Daily progress goes to `docs/JOURNAL.md` and `docs/daily/`.
-- Reusable prompts go to `docs/prompts/` and are local Codex workflow files by default.
+Проектную документацию в `docs/`, кроме `docs/prompts/`, нужно коммитить и пушить.

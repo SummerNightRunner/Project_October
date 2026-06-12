@@ -1,41 +1,52 @@
 # Project October
 
-Movie recommendation web app and public API.
+Project October - веб-приложение и API для рекомендаций фильмов.
 
-The repository currently contains a Python prototype for movie recommendations. The project is being organized into a full product with backend API, frontend app, user history, and developer-facing recommendation endpoints.
+Сейчас проект находится в состоянии очищенного Python-прототипа: есть рабочее рекомендательное ядро на CSV-датасетах и минимальный FastAPI entrypoint для дальнейшего API.
 
-Start here:
+## Структура
 
-- `docs/PROJECT_BRIEF.md` - product goal and MVP scope.
-- `docs/PROCESS.md` - how to run the project workflow with Codex.
-- `docs/ROADMAP.md` - phased development plan.
-- `docs/BACKLOG.md` - task list.
-- `docs/ARCHITECTURE.md` - target technical architecture.
-- `docs/API_SPEC.md` - draft API contract.
+- `backend/` - Python-код прототипа и будущего API.
+- `backend/app/main.py` - FastAPI-приложение.
+- `backend/recommendations_func.py` - текущая content-based рекомендационная функция.
+- `backend/data_preprocessor.py` - сборка `data/processed/processed_metadata.csv` из raw CSV.
+- `data/raw/` - исходные CSV-датасеты, tracked через Git LFS.
+- `data/processed/` - локальные генерируемые артефакты, не коммитятся.
+- `docs/` - проектная документация, roadmap, backlog, API spec, решения и дневник.
 
-Local Codex guidance may exist in `AGENTS.md` and `docs/prompts/`. These files are local workflow aids by default and are not required for running the application.
+## Локальный запуск API
 
-## Current prototype
+```bash
+python -m pip install -r requirements.txt
+uvicorn backend.app.main:app --reload
+```
 
-Raw CSV datasets are expected under `data/raw/`; generated recommendation data is expected under `data/processed/`.
+Проверка:
 
-Run the current recommendation smoke example from the repository root:
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+Ожидаемый ответ:
+
+```json
+{"status":"ok"}
+```
+
+## Проверка текущего рекомендательного прототипа
+
+Если `data/processed/processed_metadata.csv` отсутствует, сначала пересоберите его:
+
+```bash
+python backend/data_preprocessor.py
+```
+
+Затем запустите пример рекомендаций:
 
 ```bash
 python backend/recommendations_func.py
 ```
 
-## Backend API
+## Правила данных
 
-Install dependencies and run the FastAPI app from the repository root:
-
-```bash
-pip install -r requirements.txt
-uvicorn backend.app.main:app --reload
-```
-
-Health check:
-
-```bash
-curl http://127.0.0.1:8000/health
-```
+Исходные CSV лежат в `data/raw/` и отслеживаются через Git LFS. Генерируемые файлы в `data/processed/`, секреты, локальные базы, prompt-файлы Codex и ML-артефакты не коммитятся.

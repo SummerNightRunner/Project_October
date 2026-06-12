@@ -1,14 +1,40 @@
+import ast
+from pathlib import Path
+
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MultiLabelBinarizer
 import numpy as np
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROCESSED_METADATA_PATH = PROJECT_ROOT / "data" / "processed" / "processed_metadata.csv"
+
+
+def parse_list_cell(value):
+    if isinstance(value, list):
+        return [str(item) for item in value]
+    if pd.isna(value) or value == "":
+        return []
+    try:
+        parsed = ast.literal_eval(value)
+    except (ValueError, SyntaxError):
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [str(item) for item in parsed]
+
+
 # Загрузка данных
-movies_df = pd.read_csv("data/movies_metadata.csv", low_memory=False)
+movies_df = pd.read_csv(PROCESSED_METADATA_PATH, low_memory=False)
+movies_df['id'] = movies_df['id'].astype(str)
 
 # Форматирование описаний фильмов
 movies_df['overview'] = movies_df['overview'].fillna('')
+movies_df['adult'] = pd.to_numeric(movies_df['adult'], errors='coerce').fillna(0).astype(int)
+movies_df['animation'] = pd.to_numeric(movies_df['animation'], errors='coerce').fillna(0).astype(int)
+movies_df['genres_list'] = movies_df['genres_list'].apply(parse_list_cell)
+movies_df['keywords_list'] = movies_df['keywords_list'].apply(parse_list_cell)
 
 # Векторизация описаний фильмов
 vectorizer = TfidfVectorizer(lowercase=True, max_features=1000, min_df=10, ngram_range=(1, 2))
@@ -23,7 +49,7 @@ flags_array = np.array(movies_df[['animation', 'adult']].values)
 
 # Векторизация ключевых слов
 mlb_keywords = MultiLabelBinarizer()
-keywords_matrix = mlb_keywords.fit_transform(movies_df['keywords_list'].fillna('[]'))
+keywords_matrix = mlb_keywords.fit_transform(movies_df['keywords_list'])
 
 # схожесть по бинарным признакам
 def similarity_flags(profile_flags, flags_array):
@@ -128,7 +154,7 @@ def get_recommendations(selected_movie_ids, include_adult=False, top_n=20,
         if movie_id in selected_movie_ids:
             continue
         recommendations.append({
-            'title': movies_df_filtered.iloc[idx]['title'],
+            'title': movies_df_filtered.iloc[idx]['original_title'],
             'vote_average': movies_df_filtered.iloc[idx]['vote_average'],
             'site_user_rating': movies_df_filtered.iloc[idx]['avg_people_rating'],
         })
@@ -139,3 +165,10 @@ def get_recommendations(selected_movie_ids, include_adult=False, top_n=20,
     recommendations = sorted(recommendations, key=lambda x: x['vote_average'], reverse=True)
     
     return recommendations
+
+# Пример использования
+if __name__ == "__main__":
+    selected_movie_ids = ["862", "8844"]
+    recommendations = get_recommendations(selected_movie_ids, include_adult=False, top_n=10)
+    for rec in recommendations:
+        print(f"{rec['title']} (Rating: {rec['vote_average']}, User Rating: {rec['site_user_rating']})")

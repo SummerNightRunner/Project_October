@@ -2,13 +2,14 @@
 .DS_Store
 AGENTS.md
 AGENTS.override.md
+.codex/
 data/secret.key
 data/key/secret.key
 data/users.csv
+data/processed/
 *.db
 *.sqlite
 *.sqlite3
-.codex/
 docs/prompts/
 models/
 checkpoints/
@@ -20,4 +21,5 @@ runs/
 *.pkl
 *.joblib
 backend/key_generator.py
-__pycache__
+__pycache__/
+*.pyc

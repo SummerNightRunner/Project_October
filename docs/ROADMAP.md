@@ -1,80 +1,58 @@
 # Roadmap
 
-## Phase 0 - Organize The Project
+## Phase 0 - Clean Baseline
 
-Status: in progress
+Статус: в работе.
 
-- Create project docs and role prompts.
-- Define MVP scope.
-- Document current repository state.
-- Establish daily workflow.
+- Зафиксировать структуру данных.
+- Восстановить проектную документацию.
+- Создать минимальный FastAPI skeleton.
+- Добавить dependency file.
+- Проверить текущий рекомендательный прототип.
 
-## Phase 1 - Stabilize Existing Prototype
+## Phase 1 - Backend API MVP
 
-Status: planned
+Статус: запланировано.
 
-- Fix inconsistent data paths.
-- Fix parsing of `genres_list` and `keywords_list` after loading processed CSV.
-- Add dependency file.
-- Add smoke tests for recommendation output.
-- Decide whether early persistence uses SQLite or PostgreSQL.
+- `GET /health`.
+- `GET /movies/search`.
+- `POST /recommendations`.
+- Pydantic-схемы запросов и ответов.
+- Документация API.
 
-## Phase 2 - Backend API MVP
+## Phase 2 - User History MVP
 
-Status: planned
+Статус: запланировано.
 
-- Create FastAPI app structure.
-- Add health endpoint.
-- Add movie search endpoint.
-- Add recommendation endpoint.
-- Add request and response schemas.
-- Add OpenAPI-friendly examples.
+- PostgreSQL как целевое хранилище.
+- Схема пользователей.
+- История просмотра.
+- Оценки и предпочтения.
+- Исключение уже просмотренных фильмов из рекомендаций.
 
-## Phase 3 - User Data MVP
+## Phase 3 - Website MVP
 
-Status: planned
+Статус: запланировано.
 
-- Add users table.
-- Add watched history events.
-- Add ratings and preference events.
-- Exclude watched movies from recommendations.
-- Add simple auth.
+- Поиск фильмов.
+- Управление историей просмотра.
+- Экран рекомендаций.
+- Подключение к backend API.
 
-## Phase 4 - Website MVP
+## Phase 4 - Public Developer API
 
-Status: planned
+Статус: позже.
 
-- Create frontend app.
-- Add movie search.
-- Add watched history management.
-- Add recommendation results page.
-- Add movie details page.
-- Connect frontend to backend API.
+- API keys.
+- Версионирование `/v1`.
+- Usage logs.
+- Rate limits.
+- Документация для внешних разработчиков.
 
-## Phase 5 - Public Developer API
+## Phase 5 - Imports And Enrichment
 
-Status: planned
+Статус: позже.
 
-- Add API key model.
-- Add `/v1/recommendations`.
-- Add rate-limit design.
-- Add usage logging.
-- Add API examples and developer docs.
-
-## Phase 6 - Imports And Enrichment
-
-Status: planned
-
-- Add CSV import.
-- Add TMDB metadata enrichment research.
-- Research legal and technical options for Kinopoisk history import.
-- Add ID mapping between local dataset, TMDB, IMDb, and possible Kinopoisk IDs.
-
-## Phase 7 - Better Recommendation Quality
-
-Status: planned
-
-- Add feedback loop from user ratings.
-- Add hybrid recommendation scoring.
-- Evaluate recommendation quality with small test profiles.
-- Consider embeddings and vector search.
+- CSV import.
+- TMDB metadata enrichment.
+- Исследование Kinopoisk только после подтверждения стабильного и легального пути.

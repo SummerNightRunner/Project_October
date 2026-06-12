@@ -1,108 +1,40 @@
-# Architecture Decisions
+# Decisions
 
-## ADR-0001: Use Codex Project Docs As The Team Memory
+## 2026-06-13 - Clean baseline вместо продолжения хаотичных task-результатов
 
-Date: 2026-06-11
+Статус: принято.
 
-Status: accepted
+Решение:
 
-Decision:
+Сначала привести репозиторий к понятному baseline: данные, документация, `.gitignore`, FastAPI health endpoint и текущий рекомендательный прототип.
 
-Use `AGENTS.md` plus `docs/` as the durable project memory for Codex-assisted development.
+Причина:
 
-Reasoning:
+Предыдущие автоматические/task-запуски оставили противоречивое состояние: часть документов отсутствовала, API-001 не подтверждалась в текущем checkout, а данные были перенесены без зафиксированной политики.
 
-- The project needs a repeatable workflow across multiple threads.
-- `AGENTS.md` gives Codex persistent repository guidance.
-- `docs/ROADMAP.md`, `docs/BACKLOG.md`, and `docs/JOURNAL.md` make the project easier to resume.
+## 2026-06-13 - Raw CSV живут в `data/raw/`
 
-Consequences:
+Статус: принято.
 
-- Significant work should update docs.
-- Task threads should reference the relevant prompt from `docs/prompts/`.
-- The Project HQ thread should maintain planning and journal state.
+Решение:
 
-## ADR-0002: Build A Web App And API From The Same Backend
+Считать `data/raw/` целевой директорией для исходных CSV. Файлы отслеживаются через Git LFS.
 
-Date: 2026-06-11
+Последствия:
 
-Status: proposed
+- Backend-код читает raw данные из `data/raw/`.
+- Старые tracked пути `data/*.csv` заменяются на `data/raw/*.csv`.
+- Generated файлы в `data/processed/` не коммитятся.
 
-Decision:
+## 2026-06-13 - PostgreSQL как целевое хранилище
 
-Use one FastAPI backend for both the website and public developer API.
+Статус: принято.
 
-Reasoning:
+Решение:
 
-- Avoid duplicate recommendation logic.
-- Make the website a first-class client of the same API used by external projects.
-- Keep OpenAPI documentation close to implementation.
+Для пользовательской истории, рейтингов, API keys и состояния приложения целевым хранилищем будет PostgreSQL.
 
-Consequences:
+Последствия:
 
-- API schemas must be treated as product contracts.
-- Public endpoints should be versioned under `/v1`.
-- Internal app endpoints can evolve faster than public endpoints.
-
-## ADR-0003: Support Manual And CSV History Input Before Kinopoisk Import
-
-Date: 2026-06-11
-
-Status: proposed
-
-Decision:
-
-Implement manual history input and CSV import before attempting Kinopoisk integration.
-
-Reasoning:
-
-- A stable official Kinopoisk user-history API is not confirmed.
-- Manual and CSV input unlock the core product without external dependency risk.
-- Import adapters can be added later behind a clean interface.
-
-Consequences:
-
-- MVP should not depend on Kinopoisk.
-- Kinopoisk remains a research task until feasibility is proven.
-
-## ADR-0004: Use PostgreSQL From The Start For App Persistence
-
-Date: 2026-06-12
-
-Status: accepted
-
-Decision:
-
-Use PostgreSQL as the target database from the start for application users, ratings, history events, API keys, and future app state.
-
-Reasoning:
-
-- The product direction includes user accounts, watched history, API keys, and usage logging.
-- PostgreSQL avoids an early SQLite-to-PostgreSQL migration for core persistence.
-- SQLite can still be used only for isolated local experiments when explicitly scoped that way.
-
-Consequences:
-
-- Backend setup should include PostgreSQL-oriented configuration and documentation.
-- API and user-data tasks should avoid adding new app state to local CSV files.
-- Local development needs a clear PostgreSQL setup path.
-
-## ADR-0005: Keep Codex Prompt Files Local
-
-Date: 2026-06-12
-
-Status: accepted
-
-Decision:
-
-Treat `docs/prompts/` as exclusively local Codex working files.
-
-Reasoning:
-
-- Prompt files are local operating instructions, not product documentation.
-- Keeping them local reduces the risk of publishing personal workflow details or agent-specific process notes.
-
-Consequences:
-
-- Do not push `docs/prompts/` unless the user explicitly reverses this decision.
-- Project documentation that should be shared belongs in the main `docs/` files outside `docs/prompts/`.
+- CSV остается источником raw movie data, но не application state.
+- SQLite можно использовать только как временный локальный эксперимент, если это явно согласовано.

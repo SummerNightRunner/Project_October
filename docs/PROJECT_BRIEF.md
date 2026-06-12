@@ -1,44 +1,27 @@
 # Project Brief
 
-## One-Line Description
+## Что строим
 
-Project October is a movie recommendation platform with a user-facing web app and a public API for third-party projects.
+Project October - сервис рекомендаций фильмов с двумя интерфейсами:
 
-## Problem
+- сайт для обычного пользователя;
+- API для сторонних проектов.
 
-People often know what they have watched and liked, but it is hard to turn that history into useful movie recommendations. Existing recommendation feeds are usually closed, hard to tune, or locked inside one platform.
+## Цель
 
-## Product Goal
+Пользователь передает историю просмотра, оценки или список понравившихся фильмов, а сервис возвращает персональные рекомендации и объясняет, почему эти фильмы подходят.
 
-Build a service that accepts a user's movie history, ratings, and preferences, then returns explainable movie recommendations through both a website and an API.
+## MVP
 
-## Primary Users
+- Поиск фильмов в локальном каталоге.
+- Ручной ввод просмотренных/понравившихся фильмов.
+- Рекомендации на базе текущего content-based прототипа.
+- Минимальный FastAPI backend.
+- Документированный API-контракт.
 
-- Viewers who want personalized movie suggestions.
-- Developers who want recommendation results through an API.
-- Product builders who need a movie discovery component for another app.
+## Не входит в MVP
 
-## MVP Scope
-
-- Search movies in the local dataset.
-- Let a user manually add watched, liked, disliked, and rated movies.
-- Generate recommendations from selected movies and stored history.
-- Exclude already watched movies.
-- Provide a basic web interface.
-- Provide a documented API endpoint for recommendations.
-
-## Later Scope
-
-- User accounts and persistent profiles.
-- CSV import for watched history.
-- TMDB metadata enrichment.
-- Optional Kinopoisk research/import path if legally and technically stable.
-- API keys, rate limits, usage logs, and developer documentation.
-- Hybrid recommendation models using collaborative signals.
-
-## Non-Goals For The MVP
-
-- Streaming or hosting movie video.
-- Scraping private user accounts without explicit user consent.
-- Production-grade billing.
-- Full mobile app.
+- Импорт истории из Kinopoisk без подтвержденного легального и стабильного способа.
+- Биллинг.
+- Мобильное приложение.
+- Сложная ML-инфраструктура.
