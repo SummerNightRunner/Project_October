@@ -5,6 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from backend.app.db.base import Base
 from backend.app.db.config import require_database_url
+from backend.app.db import models  # noqa: F401
 
 
 target_metadata = Base.metadata
