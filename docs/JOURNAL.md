@@ -21,3 +21,4 @@
 - Зафиксированы таблицы `users`, `movie_catalog_entries`, `user_movie_history`, `user_movie_ratings`, `user_preferences`, `api_clients`, `api_keys`, `user_events`.
 - В `docs/API_SPEC.md` добавлены черновые будущие контракты для истории, оценок, предпочтений и API-key доступа.
 - В backlog добавлены follow-up задачи `DB-002`, `DB-003`, `DB-004`, `API-004`, `API-005`.
+- Project HQ подтвердил `DB-001` после merge в `main`: локальный запуск `python -m pytest` прошел, 9 тестов успешны.
