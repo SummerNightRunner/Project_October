@@ -47,6 +47,12 @@ python backend/data_preprocessor.py
 python backend/recommendations_func.py
 ```
 
+## Тесты
+
+```bash
+python -m pytest
+```
+
 ## Правила данных
 
 Исходные CSV лежат в `data/raw/` и отслеживаются через Git LFS. Генерируемые файлы в `data/processed/`, секреты, локальные базы, prompt-файлы Codex и ML-артефакты не коммитятся.
