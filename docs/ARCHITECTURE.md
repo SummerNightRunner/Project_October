@@ -1,35 +1,35 @@
-# Architecture
+# Архитектура
 
 ## Текущее состояние
 
 Проект очищен до базового состояния:
 
-- FastAPI entrypoint: `backend/app/main.py`.
+- точка входа FastAPI: `backend/app/main.py`.
 - Рекомендательное ядро: `backend/recommendations_func.py`.
 - Препроцессинг данных: `backend/data_preprocessor.py`.
-- Raw CSV: `data/raw/`.
-- Generated metadata: `data/processed/`.
+- Исходные CSV: `data/raw/`.
+- Генерируемые метаданные: `data/processed/`.
 
 ## Целевая архитектура
 
 ```text
-frontend app
+frontend-приложение
     |
     v
 FastAPI backend
     |
-    +-- movie catalog service
-    +-- recommendation service
-    +-- user history service
-    +-- public API service
+    +-- сервис каталога фильмов
+    +-- сервис рекомендаций
+    +-- сервис пользовательской истории
+    +-- публичный API-сервис
     |
     v
 PostgreSQL
 ```
 
-## Backend
+## Backend-структура
 
-Ближайшая целевая структура:
+Текущая ближайшая структура:
 
 ```text
 backend/
@@ -42,7 +42,7 @@ backend/
   user_registration.py
 ```
 
-Дальше, когда API начнет расти, можно перейти к пакетной структуре:
+Когда API начнет расти, можно перейти к более явной пакетной структуре:
 
 ```text
 backend/
@@ -56,20 +56,20 @@ backend/
 
 Пока не усложняем структуру без необходимости.
 
-## Data Policy
+## Политика данных
 
 - `data/raw/*.csv` хранится через Git LFS.
 - `data/processed/` генерируется локально и не коммитится.
 - `data/key/secret.key`, `data/users.csv`, локальные базы и приватная история пользователей не коммитятся.
-- Будущие embeddings, vector indexes, checkpoints и experiment runs не коммитятся без явного решения.
+- Будущие embeddings, vector indexes, checkpoints и результаты экспериментов не коммитятся без явного решения.
 
-## Recommendation Strategy
+## Стратегия рекомендаций
 
-MVP использует текущую content-based модель:
+MVP использует текущую модель на признаках фильма:
 
 - TF-IDF по описаниям;
 - жанры;
-- keywords;
+- ключевые слова;
 - флаги `adult` и `animation`;
 - бонус за коллекцию.
 

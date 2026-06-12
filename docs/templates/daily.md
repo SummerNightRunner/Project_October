@@ -1,25 +1,25 @@
-# Daily Log - YYYY-MM-DD
+# Дневник дня - YYYY-MM-DD
 
-## Goals
+## Цели
 
 - [ ]
 
-## Work Done
+## Сделано
 
 -
 
-## Decisions
+## Решения
 
 -
 
-## Blockers
+## Блокеры
 
 -
 
-## Verification
+## Проверка
 
 -
 
-## Tomorrow / Next Session
+## Следующая сессия
 
 -

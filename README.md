@@ -2,17 +2,17 @@
 
 Project October - веб-приложение и API для рекомендаций фильмов.
 
-Сейчас проект находится в состоянии очищенного Python-прототипа: есть рабочее рекомендательное ядро на CSV-датасетах и минимальный FastAPI entrypoint для дальнейшего API.
+Сейчас проект находится в состоянии очищенного Python-прототипа: есть рабочее рекомендательное ядро на CSV-датасетах, минимальная точка входа FastAPI и дымовые тесты.
 
 ## Структура
 
 - `backend/` - Python-код прототипа и будущего API.
 - `backend/app/main.py` - FastAPI-приложение.
-- `backend/recommendations_func.py` - текущая content-based рекомендационная функция.
-- `backend/data_preprocessor.py` - сборка `data/processed/processed_metadata.csv` из raw CSV.
-- `data/raw/` - исходные CSV-датасеты, tracked через Git LFS.
+- `backend/recommendations_func.py` - текущая рекомендательная функция на признаках фильма.
+- `backend/data_preprocessor.py` - сборка `data/processed/processed_metadata.csv` из исходных CSV.
+- `data/raw/` - исходные CSV-датасеты, отслеживаются через Git LFS.
 - `data/processed/` - локальные генерируемые артефакты, не коммитятся.
-- `docs/` - проектная документация, roadmap, backlog, API spec, решения и дневник.
+- `docs/` - проектная документация, дорожная карта, backlog, API-спецификация, решения и дневник.
 
 ## Локальный запуск API
 
@@ -53,6 +53,6 @@ python backend/recommendations_func.py
 python -m pytest
 ```
 
-## Правила данных
+## Правила хранения данных
 
-Исходные CSV лежат в `data/raw/` и отслеживаются через Git LFS. Генерируемые файлы в `data/processed/`, секреты, локальные базы, prompt-файлы Codex и ML-артефакты не коммитятся.
+Исходные CSV лежат в `data/raw/` и отслеживаются через Git LFS. Генерируемые файлы в `data/processed/`, секреты, локальные базы, файлы промптов Codex и ML-артефакты не коммитятся.

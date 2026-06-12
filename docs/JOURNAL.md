@@ -1,14 +1,14 @@
-# Journal
+# Дневник проекта
 
 ## 2026-06-13
 
-- Проведена очистка после неудачного/противоречивого task-результата.
+- Проведена очистка после неудачного/противоречивого результата задачи.
 - Восстановлен нормальный проектный контур документации: `PROJECT_BRIEF`, `ROADMAP`, `ARCHITECTURE`, `API_SPEC`, `DECISIONS`, `PROCESS`, backlog и daily.
-- Зафиксирована data policy: исходные CSV находятся в `data/raw/` и отслеживаются через Git LFS, `data/processed/` игнорируется как generated output.
-- Старый интерактивный CLI в `backend/app.py` заменен на минимальный FastAPI app с `GET /health`.
+- Зафиксирована политика данных: исходные CSV находятся в `data/raw/` и отслеживаются через Git LFS, `data/processed/` игнорируется как генерируемый артефакт.
+- Старый интерактивный CLI заменен на минимальный FastAPI app с `GET /health` в `backend/app/main.py`.
 - Добавлен `requirements.txt` для локального запуска backend.
-- Текущий recommendation prototype сохранен и продолжает жить отдельно от API-слоя.
-- Добавлены smoke-тесты для `GET /health` и текущего recommendation example.
+- Текущий рекомендательный прототип сохранен и продолжает жить отдельно от API-слоя.
+- Добавлены дымовые тесты для `GET /health` и текущего примера рекомендаций.
 - README дополнен командой запуска тестов.
 - Project HQ подтвердил `TEST-001`: локальный запуск `python -m pytest` прошел, 2 теста успешны.
-- Следующий шаг: обернуть recommendation function в `POST /recommendations`.
+- Следующий шаг: обернуть рекомендательную функцию в `POST /recommendations`.

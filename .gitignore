@@ -1,5 +1,6 @@
 .conda
 .DS_Store
+.pytest_cache/
 AGENTS.md
 AGENTS.override.md
 .codex/

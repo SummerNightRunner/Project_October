@@ -1,23 +1,23 @@
-# TASK-ID: Title
+# TASK-ID: Название
 
-## Goal
-
-
-## Context
+## Цель
 
 
-## Files
+## Контекст
 
 
-## Constraints
+## Файлы
 
 
-## Done When
+## Ограничения
 
-- [ ]
 
-## Verification
+## Готово, когда
 
 - [ ]
 
-## Notes
+## Проверка
+
+- [ ]
+
+## Заметки
