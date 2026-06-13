@@ -42,3 +42,9 @@
 - Добавлены endpoint-тесты на временной SQLite-базе через FastAPI dependency override, без подключения к production DB.
 - Проверка `python -m pytest` прошла через временный `/tmp` alias на Python 3.12 Codex runtime: 24 теста успешны, 1 предупреждение Starlette о deprecated `httpx` import.
 - Project HQ подтвердил `API-004` после merge в `main`: локальный запуск во временном venv прошел, 24 теста успешны, 1 предупреждение Starlette о deprecated `httpx` import.
+- Выполнен `API-005`: добавлен API-key auth для endpoints пользовательской истории и оценок.
+- Ключи имеют формат `oct_<prefix>_<secret>`; backend ищет запись по `key_prefix`, проверяет `key_hash` полного ключа через `hmac.compare_digest`, статус ключа, срок действия, статус API client и требуемый scope.
+- Реализованы scopes `history:read`, `history:write`, `ratings:write`, `recommendations:read`; `GET /users/{user_id}/history`, `PUT /users/{user_id}/history/{movie_id}` и `PUT /users/{user_id}/ratings/{movie_id}` теперь требуют соответствующие scopes.
+- `POST /recommendations` временно оставлен публичным до появления тарифов, лимитов и модели публичного API-доступа; решение зафиксировано в `docs/DECISIONS.md`.
+- Добавлены auth-тесты на отсутствующий/неверный/revoked/expired ключ, недостаточный scope, успешный scope и обновление `last_used_at`.
+- Проверка через временный venv на bundled Python 3.12: `python -m pytest` прошел, 31 тест успешен, 1 предупреждение Starlette о deprecated `httpx` import.
