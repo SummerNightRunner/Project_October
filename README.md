@@ -73,8 +73,28 @@ alembic upgrade head
 `users`, `movie_catalog_entries`, `user_movie_history`, `user_movie_ratings`,
 `user_preferences`, `api_clients`, `api_keys`, `user_events`.
 
-`movie_catalog_entries` пока не синхронизируется с `processed_metadata.csv`; это отдельная задача DB-004.
-Endpoints пользовательской истории и оценок также не реализованы и остаются для API-004.
+`movie_catalog_entries` синхронизируется из обработанного каталога отдельной командой.
+По умолчанию используется `data/processed/processed_metadata.csv`; если задана
+`PROJECT_OCTOBER_PROCESSED_METADATA`, используется путь из этой переменной.
+
+```bash
+python -m backend.app.db.sync_movie_catalog
+```
+
+Для локальной проверки можно явно передать тестовый путь и тестовый DSN:
+
+```bash
+python -m backend.app.db.sync_movie_catalog \
+  --metadata-path /path/to/processed_metadata.csv \
+  --database-url "sqlite+pysqlite:////tmp/project_october_catalog_sync.sqlite" \
+  --source-catalog-version "local-fixture"
+```
+
+Команда выполняет upsert по `catalog_movie_id`: добавляет новые фильмы и обновляет
+`title_snapshot`, `release_date`, `source_catalog_version`, `updated_at` для фильмов,
+которые уже есть в таблице. Фильмы, пропавшие из CSV, не удаляются.
+
+Endpoints пользовательской истории и оценок не реализованы и остаются для API-004.
 
 ## Проверка текущего рекомендательного прототипа
 

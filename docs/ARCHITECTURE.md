@@ -237,13 +237,27 @@ api_clients
 
 Текущий API принимает и возвращает `id` как строку из `processed_metadata.csv`. В базе этот идентификатор называется `catalog_movie_id`, чтобы не смешивать его с surrogate key таблиц.
 
-План интеграции:
+Текущий план интеграции:
 
 1. `GET /movies/search` продолжает искать по `data/processed/processed_metadata.csv`.
 2. Перед записью пользовательской истории backend проверяет `catalog_movie_id` по локальному каталогу.
-3. После появления миграций отдельная задача синхронизирует минимальный список фильмов в `movie_catalog_entries`.
+3. DB-004 синхронизирует минимальный список фильмов в `movie_catalog_entries`.
 4. Рекомендательный сервис использует пользовательские `catalog_movie_id` как вход в текущую content-based модель.
 5. Если позже появятся TMDB или другие внешние ID, они добавляются отдельной таблицей сопоставления или расширением `movie_catalog_entries`, без изменения пользовательских таблиц.
+
+Синхронизация каталога запускается локально командой:
+
+```bash
+python -m backend.app.db.sync_movie_catalog
+```
+
+Команда читает `data/processed/processed_metadata.csv` или путь из
+`PROJECT_OCTOBER_PROCESSED_METADATA`, затем делает upsert по `catalog_movie_id`.
+Синхронизируются только минимальные поля FK-проекции: `catalog_movie_id` из CSV
+`id`, `title_snapshot` из `original_title`/`title`/`name`, `release_date` при
+наличии безопасно распарсенной даты, опциональный `source_catalog_version`,
+`created_at` и `updated_at`. Строки, отсутствующие в новом CSV, не удаляются,
+потому что они могут уже использоваться пользовательской историей.
 
 ## Backend-структура
 
@@ -253,9 +267,12 @@ api_clients
 backend/
   app/
     __init__.py
+    catalog_paths.py
     db/
       base.py
       config.py
+      movie_catalog_sync.py
+      sync_movie_catalog.py
       session.py
     main.py
   recommendations_func.py
@@ -277,7 +294,13 @@ DB-003 добавляет:
 - Alembic revision `db003_user_history_schema`, создающую таблицы DB-001;
 - PostgreSQL extensions `pgcrypto` для `gen_random_uuid()` и `citext` для case-insensitive email-полей.
 
-Синхронизация `movie_catalog_entries` с `data/processed/processed_metadata.csv` остается отдельной задачей DB-004. До появления API-004 существующие endpoints продолжают работать поверх локального обработанного каталога.
+DB-004 добавляет:
+
+- `backend/app/catalog_paths.py` с общим resolver пути к обработанному каталогу;
+- `backend/app/db/movie_catalog_sync.py` с чтением CSV и upsert-синхронизацией `movie_catalog_entries`;
+- `backend/app/db/sync_movie_catalog.py` как CLI/module entrypoint для локального запуска.
+
+До появления API-004 существующие endpoints продолжают работать поверх локального обработанного каталога.
 
 Когда API начнет расти дальше, можно перейти к более явной пакетной структуре:
 

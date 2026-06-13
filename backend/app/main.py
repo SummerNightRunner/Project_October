@@ -1,18 +1,12 @@
-import os
-from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 
+from backend.app.catalog_paths import get_processed_metadata_path
+
 
 app = FastAPI(title="Project October API")
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_PROCESSED_METADATA_PATH = (
-    PROJECT_ROOT / "data" / "processed" / "processed_metadata.csv"
-)
-PROCESSED_METADATA_ENV = "PROJECT_OCTOBER_PROCESSED_METADATA"
 
 
 class RecommendationsRequest(BaseModel):
@@ -56,10 +50,6 @@ class MovieSearchResponse(BaseModel):
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
-
-
-def get_processed_metadata_path() -> Path:
-    return Path(os.environ.get(PROCESSED_METADATA_ENV, DEFAULT_PROCESSED_METADATA_PATH))
 
 
 def search_movies_in_catalog(query: str, limit: int) -> list[dict[str, Any]]:

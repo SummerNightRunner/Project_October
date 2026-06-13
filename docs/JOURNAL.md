@@ -31,3 +31,7 @@
 - DB-004 и API-004 не реализованы: таблица `movie_catalog_entries` пока не синхронизируется с обработанным каталогом, endpoints пользовательской истории отсутствуют.
 - Проверка `python -m pytest` прошла: 13 тестов успешны; `alembic history` видит `db003_user_history_schema`.
 - Project HQ подтвердил `DB-003` после merge в `main`: локальный запуск `python -m pytest` прошел, 13 тестов успешны; `alembic history` показывает `db003_user_history_schema`.
+- Выполнен `DB-004`: добавлен сервис синхронизации `movie_catalog_entries` из `processed_metadata.csv`, общий resolver `PROJECT_OCTOBER_PROCESSED_METADATA` и CLI entrypoint `python -m backend.app.db.sync_movie_catalog`.
+- Синхронизация делает upsert по `catalog_movie_id`, обновляет `title_snapshot`, `release_date`, `source_catalog_version`, `updated_at`, сохраняет `created_at` и не удаляет фильмы, отсутствующие в новом CSV.
+- Добавлены тесты чтения fixture CSV, повторного upsert без удаления устаревших строк и CLI entrypoint на временной SQLite-базе.
+- Проверка `python -m pytest` прошла: 17 тестов успешны; отдельный CLI smoke на fixture CSV и временной SQLite-базе прошел без подключения к production DB.
