@@ -4,9 +4,11 @@ from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 
 from backend.app.catalog_paths import get_processed_metadata_path
+from backend.app.user_history import router as user_history_router
 
 
 app = FastAPI(title="Project October API")
+app.include_router(user_history_router)
 
 
 class RecommendationsRequest(BaseModel):
