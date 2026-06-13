@@ -38,6 +38,7 @@ class ApiKeyPrincipal:
     api_client_id: uuid.UUID
     api_key_id: uuid.UUID
     key_prefix: str
+    owner_user_id: uuid.UUID | None
     scopes: frozenset[str]
 
 
@@ -87,6 +88,10 @@ def unauthorized(detail: str = "Invalid API key.") -> HTTPException:
 
 def forbidden(detail: str = "API key does not have the required scope.") -> HTTPException:
     return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
+
+def forbidden_user_access() -> HTTPException:
+    return forbidden("API key is not allowed to access this user.")
 
 
 def extract_bearer_token(authorization: str | None) -> str:
@@ -158,8 +163,17 @@ def verify_api_key(
         api_client_id=api_key_record.api_client_id,
         api_key_id=api_key_record.id,
         key_prefix=api_key_record.key_prefix,
+        owner_user_id=api_client.owner_user_id,
         scopes=scopes,
     )
+
+
+def ensure_api_client_can_access_user(
+    principal: ApiKeyPrincipal,
+    user_id: uuid.UUID,
+) -> None:
+    if principal.owner_user_id is None or principal.owner_user_id != user_id:
+        raise forbidden_user_access()
 
 
 def require_api_scope(required_scope: str):

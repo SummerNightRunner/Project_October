@@ -11,9 +11,11 @@ from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import Session
 
 from backend.app.api_key_auth import (
+    ApiKeyPrincipal,
     HISTORY_READ_SCOPE,
     HISTORY_WRITE_SCOPE,
     RATINGS_WRITE_SCOPE,
+    ensure_api_client_can_access_user,
     require_api_scope,
 )
 from backend.app.db.models import (
@@ -169,9 +171,11 @@ def get_user_history(
     user_id: uuid.UUID,
     status: HistoryStatus | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=100),
-    _auth=Depends(require_api_scope(HISTORY_READ_SCOPE)),
+    auth: ApiKeyPrincipal = Depends(require_api_scope(HISTORY_READ_SCOPE)),
     session: Session = Depends(get_db_session),
 ) -> UserHistoryResponse:
+    ensure_api_client_can_access_user(auth, user_id)
+
     query = (
         select(UserMovieHistory, UserMovieRating.rating_value)
         .outerjoin(
@@ -210,9 +214,10 @@ def put_user_history(
     user_id: uuid.UUID,
     movie_id: str,
     request: UserHistoryUpdateRequest,
-    _auth=Depends(require_api_scope(HISTORY_WRITE_SCOPE)),
+    auth: ApiKeyPrincipal = Depends(require_api_scope(HISTORY_WRITE_SCOPE)),
     session: Session = Depends(get_db_session),
 ) -> UserHistoryItem:
+    ensure_api_client_can_access_user(auth, user_id)
     ensure_movie_exists(session, movie_id)
     ensure_user_exists(session, user_id)
     updated_at = utc_now()
@@ -255,9 +260,10 @@ def put_user_rating(
     user_id: uuid.UUID,
     movie_id: str,
     request: UserRatingUpdateRequest,
-    _auth=Depends(require_api_scope(RATINGS_WRITE_SCOPE)),
+    auth: ApiKeyPrincipal = Depends(require_api_scope(RATINGS_WRITE_SCOPE)),
     session: Session = Depends(get_db_session),
 ) -> UserRatingResponse:
+    ensure_api_client_can_access_user(auth, user_id)
     ensure_movie_exists(session, movie_id)
     ensure_user_exists(session, user_id)
     updated_at = utc_now()
