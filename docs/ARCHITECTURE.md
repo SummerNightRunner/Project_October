@@ -300,7 +300,21 @@ DB-004 добавляет:
 - `backend/app/db/movie_catalog_sync.py` с чтением CSV и upsert-синхронизацией `movie_catalog_entries`;
 - `backend/app/db/sync_movie_catalog.py` как CLI/module entrypoint для локального запуска.
 
-До появления API-004 существующие endpoints продолжают работать поверх локального обработанного каталога.
+API-004 добавляет:
+
+- `backend/app/user_history.py` с FastAPI router, Pydantic-схемами и минимальной
+  сервисной логикой чтения/обновления `user_movie_history` и
+  `user_movie_ratings`;
+- проверку `movie_id` через `movie_catalog_entries` перед записью истории или
+  оценки;
+- автосоздание активного пользователя по переданному UUID на write-запросах до
+  появления полноценной авторизации;
+- SQLite-backed endpoint-тесты через FastAPI dependency override без обращения к
+  production DB.
+
+Существующие endpoints рекомендаций и поиска продолжают работать поверх
+локального обработанного каталога. Пользовательская история и оценки уже пишутся
+в DB-слой, но пока не используются текущей content-based моделью рекомендаций.
 
 Когда API начнет расти дальше, можно перейти к более явной пакетной структуре:
 

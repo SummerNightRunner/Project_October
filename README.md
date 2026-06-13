@@ -94,7 +94,37 @@ python -m backend.app.db.sync_movie_catalog \
 `title_snapshot`, `release_date`, `source_catalog_version`, `updated_at` для фильмов,
 которые уже есть в таблице. Фильмы, пропавшие из CSV, не удаляются.
 
-Endpoints пользовательской истории и оценок не реализованы и остаются для API-004.
+## Пользовательская история и оценки
+
+Endpoints пользовательской истории используют синхронизированную таблицу
+`movie_catalog_entries`. Перед записью истории или оценки `movie_id` должен
+существовать в этой таблице.
+
+Пример записи истории:
+
+```bash
+curl -X PUT http://127.0.0.1:8000/users/<user_uuid>/history/862 \
+  -H "Content-Type: application/json" \
+  -d '{"status":"watched","watched_at":"2026-06-13T12:00:00Z","source":"manual"}'
+```
+
+Пример записи оценки:
+
+```bash
+curl -X PUT http://127.0.0.1:8000/users/<user_uuid>/ratings/862 \
+  -H "Content-Type: application/json" \
+  -d '{"rating_value":8.5,"rated_at":"2026-06-13T12:05:00Z","source":"manual"}'
+```
+
+Пример чтения истории:
+
+```bash
+curl "http://127.0.0.1:8000/users/<user_uuid>/history?status=watched&limit=20"
+```
+
+Для MVP write-endpoints автоматически создают активного пользователя по
+переданному UUID, если такого пользователя еще нет. Полноценная авторизация и
+API-key access остаются будущей задачей `API-005`.
 
 ## Проверка текущего рекомендательного прототипа
 

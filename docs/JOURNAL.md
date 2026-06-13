@@ -36,3 +36,8 @@
 - Добавлены тесты чтения fixture CSV, повторного upsert без удаления устаревших строк и CLI entrypoint на временной SQLite-базе.
 - Проверка `python -m pytest` прошла: 17 тестов успешны; отдельный CLI smoke на fixture CSV и временной SQLite-базе прошел без подключения к production DB.
 - Project HQ подтвердил `DB-004` после merge в `main`: локальный запуск `python -m pytest` прошел, 17 тестов успешны.
+- Выполнен `API-004`: добавлены `GET /users/{user_id}/history`, `PUT /users/{user_id}/history/{movie_id}` и `PUT /users/{user_id}/ratings/{movie_id}`.
+- Endpoints используют `movie_id` как публичное имя `catalog_movie_id`, проверяют наличие фильма в `movie_catalog_entries`, возвращают `404` для неизвестного фильма и валидируют оценки в диапазоне `0..10` с одним знаком после запятой.
+- Для MVP принято автосоздание активного пользователя на write-запросах истории и оценок; `GET` не создает пользователя и возвращает пустую историю, если записей нет.
+- Добавлены endpoint-тесты на временной SQLite-базе через FastAPI dependency override, без подключения к production DB.
+- Проверка `python -m pytest` прошла через временный `/tmp` alias на Python 3.12 Codex runtime: 24 теста успешны, 1 предупреждение Starlette о deprecated `httpx` import.
