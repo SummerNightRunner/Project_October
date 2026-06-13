@@ -41,3 +41,4 @@
 - Для MVP принято автосоздание активного пользователя на write-запросах истории и оценок; `GET` не создает пользователя и возвращает пустую историю, если записей нет.
 - Добавлены endpoint-тесты на временной SQLite-базе через FastAPI dependency override, без подключения к production DB.
 - Проверка `python -m pytest` прошла через временный `/tmp` alias на Python 3.12 Codex runtime: 24 теста успешны, 1 предупреждение Starlette о deprecated `httpx` import.
+- Project HQ подтвердил `API-004` после merge в `main`: локальный запуск во временном venv прошел, 24 теста успешны, 1 предупреждение Starlette о deprecated `httpx` import.
