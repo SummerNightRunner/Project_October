@@ -35,3 +35,4 @@
 - Синхронизация делает upsert по `catalog_movie_id`, обновляет `title_snapshot`, `release_date`, `source_catalog_version`, `updated_at`, сохраняет `created_at` и не удаляет фильмы, отсутствующие в новом CSV.
 - Добавлены тесты чтения fixture CSV, повторного upsert без удаления устаревших строк и CLI entrypoint на временной SQLite-базе.
 - Проверка `python -m pytest` прошла: 17 тестов успешны; отдельный CLI smoke на fixture CSV и временной SQLite-базе прошел без подключения к production DB.
+- Project HQ подтвердил `DB-004` после merge в `main`: локальный запуск `python -m pytest` прошел, 17 тестов успешны.
