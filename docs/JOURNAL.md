@@ -47,4 +47,5 @@
 - Реализованы scopes `history:read`, `history:write`, `ratings:write`, `recommendations:read`; `GET /users/{user_id}/history`, `PUT /users/{user_id}/history/{movie_id}` и `PUT /users/{user_id}/ratings/{movie_id}` теперь требуют соответствующие scopes.
 - `POST /recommendations` временно оставлен публичным до появления тарифов, лимитов и модели публичного API-доступа; решение зафиксировано в `docs/DECISIONS.md`.
 - Добавлены auth-тесты на отсутствующий/неверный/revoked/expired ключ, недостаточный scope, успешный scope и обновление `last_used_at`.
-- Проверка через временный venv на bundled Python 3.12: `python -m pytest` прошел, 31 тест успешен, 1 предупреждение Starlette о deprecated `httpx` import.
+- Проверка через временный venv: `python -m pytest` прошел, 31 тест успешен, 1 предупреждение Starlette о deprecated `httpx` import.
+- Project HQ подтвердил `API-005` после merge в `main`: локальный запуск во временном venv прошел, 31 тест успешен, 1 предупреждение Starlette о deprecated `httpx` import.
