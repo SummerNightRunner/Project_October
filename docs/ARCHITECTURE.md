@@ -316,6 +316,22 @@ API-004 добавляет:
 локального обработанного каталога. Пользовательская история и оценки уже пишутся
 в DB-слой, но пока не используются текущей content-based моделью рекомендаций.
 
+API-005 добавляет минимальный API-key auth для сторонних проектов:
+
+- `backend/app/api_key_auth.py` содержит helper создания ключа
+  `oct_<prefix>_<secret>`, вычисление `sha256:<hex>` hash полного ключа,
+  проверку hash через `hmac.compare_digest` и FastAPI dependency для scopes;
+- поиск ключа идет по `api_keys.key_prefix` в формате `oct_<prefix>`, полный
+  ключ не хранится и не возвращается наружу;
+- проверяются `api_keys.status`, `api_keys.expires_at`, `api_keys.scopes` и
+  активный статус связанного `api_clients`;
+- при успешной проверке обновляется `api_keys.last_used_at`;
+- `GET /users/{user_id}/history` требует `history:read`;
+- `PUT /users/{user_id}/history/{movie_id}` требует `history:write`;
+- `PUT /users/{user_id}/ratings/{movie_id}` требует `ratings:write`;
+- `POST /recommendations` временно остается публичным до появления тарифов,
+  лимитов и полноценной модели публичного API-доступа.
+
 Когда API начнет расти дальше, можно перейти к более явной пакетной структуре:
 
 ```text

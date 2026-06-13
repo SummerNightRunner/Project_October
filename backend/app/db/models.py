@@ -7,11 +7,22 @@ import uuid
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import ARRAY, CITEXT, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.types import TypeDecorator
 
 from backend.app.db.base import Base
 
 
 timestamp_with_timezone = sa.DateTime(timezone=True)
+
+
+class StringList(TypeDecorator):
+    impl = sa.JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(ARRAY(sa.Text()))
+        return dialect.type_descriptor(sa.JSON())
 
 
 class User(Base):
@@ -306,7 +317,7 @@ class ApiKey(Base):
     key_prefix: Mapped[str] = mapped_column(sa.Text(), nullable=False)
     key_hash: Mapped[str] = mapped_column(sa.Text(), nullable=False)
     scopes: Mapped[list[str]] = mapped_column(
-        ARRAY(sa.Text()),
+        StringList(),
         nullable=False,
         server_default=sa.text("ARRAY[]::text[]"),
     )

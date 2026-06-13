@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 import uuid
 
 from fastapi.testclient import TestClient
@@ -7,7 +7,16 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from backend.app.api_key_auth import (
+    HISTORY_READ_SCOPE,
+    HISTORY_WRITE_SCOPE,
+    RATINGS_WRITE_SCOPE,
+    create_api_key_hash,
+    extract_api_key_prefix,
+)
 from backend.app.db.models import (
+    ApiClient,
+    ApiKey,
     MovieCatalogEntry,
     User,
     UserMovieHistory,
@@ -15,6 +24,9 @@ from backend.app.db.models import (
 )
 from backend.app.db.session import get_db_session
 from backend.app.main import app
+
+
+DEFAULT_API_KEY = "oct_allscopes_test-secret"
 
 
 def create_user_history_test_session_factory():
@@ -79,6 +91,35 @@ def create_user_history_test_session_factory():
             )
             """
         )
+        connection.exec_driver_sql(
+            """
+            CREATE TABLE api_clients (
+                id CHAR(32) NOT NULL PRIMARY KEY,
+                owner_user_id CHAR(32),
+                name TEXT NOT NULL,
+                contact_email TEXT,
+                status TEXT NOT NULL,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL
+            )
+            """
+        )
+        connection.exec_driver_sql(
+            """
+            CREATE TABLE api_keys (
+                id CHAR(32) NOT NULL PRIMARY KEY,
+                api_client_id CHAR(32) NOT NULL,
+                key_prefix TEXT NOT NULL UNIQUE,
+                key_hash TEXT NOT NULL,
+                scopes JSON NOT NULL,
+                status TEXT NOT NULL,
+                expires_at DATETIME,
+                last_used_at DATETIME,
+                created_at DATETIME NOT NULL,
+                revoked_at DATETIME
+            )
+            """
+        )
 
     return sessionmaker(
         bind=engine,
@@ -91,6 +132,11 @@ def create_user_history_test_session_factory():
 @pytest.fixture
 def user_history_client():
     session_factory = create_user_history_test_session_factory()
+    add_api_key(
+        session_factory,
+        api_key=DEFAULT_API_KEY,
+        scopes=[HISTORY_READ_SCOPE, HISTORY_WRITE_SCOPE, RATINGS_WRITE_SCOPE],
+    )
 
     def override_get_db_session():
         session = session_factory()
@@ -101,9 +147,52 @@ def user_history_client():
 
     app.dependency_overrides[get_db_session] = override_get_db_session
     try:
-        yield TestClient(app), session_factory
+        yield (
+            TestClient(
+                app,
+                headers={"Authorization": f"Bearer {DEFAULT_API_KEY}"},
+            ),
+            session_factory,
+        )
     finally:
         app.dependency_overrides.pop(get_db_session, None)
+
+
+def add_api_key(
+    session_factory,
+    *,
+    api_key: str,
+    scopes: list[str],
+    status: str = "active",
+    client_status: str = "active",
+    expires_at: datetime | None = None,
+) -> ApiKey:
+    created_at = datetime.now(UTC)
+    key_prefix = extract_api_key_prefix(api_key)
+    assert key_prefix is not None
+
+    with session_factory() as session:
+        api_client = ApiClient(
+            id=uuid.uuid4(),
+            name=f"Test client {key_prefix}",
+            status=client_status,
+            created_at=created_at,
+            updated_at=created_at,
+        )
+        api_key_record = ApiKey(
+            id=uuid.uuid4(),
+            api_client_id=api_client.id,
+            key_prefix=key_prefix,
+            key_hash=create_api_key_hash(api_key),
+            scopes=scopes,
+            status=status,
+            expires_at=expires_at,
+            created_at=created_at,
+        )
+        session.add(api_client)
+        session.add(api_key_record)
+        session.commit()
+        return api_key_record
 
 
 def add_catalog_movies(session_factory, *movie_ids: str) -> None:
@@ -121,6 +210,139 @@ def add_catalog_movies(session_factory, *movie_ids: str) -> None:
             ]
         )
         session.commit()
+
+
+def get_api_key_record(session_factory, api_key: str) -> ApiKey:
+    key_prefix = extract_api_key_prefix(api_key)
+    assert key_prefix is not None
+    with session_factory() as session:
+        api_key_record = session.scalar(
+            select(ApiKey).where(ApiKey.key_prefix == key_prefix)
+        )
+        assert api_key_record is not None
+        return api_key_record
+
+
+def test_user_history_requires_authorization_header(user_history_client):
+    _, _session_factory = user_history_client
+    user_id = uuid.uuid4()
+    client = TestClient(app)
+
+    response = client.get(f"/users/{user_id}/history")
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Missing API key."}
+
+
+def test_user_history_rejects_invalid_api_key(user_history_client):
+    _, _session_factory = user_history_client
+    user_id = uuid.uuid4()
+    client = TestClient(app)
+
+    response = client.get(
+        f"/users/{user_id}/history",
+        headers={"Authorization": "Bearer oct_missing_test-secret"},
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid API key."}
+
+
+def test_user_history_rejects_revoked_api_key(user_history_client):
+    _, session_factory = user_history_client
+    user_id = uuid.uuid4()
+    revoked_key = "oct_revoked_test-secret"
+    add_api_key(
+        session_factory,
+        api_key=revoked_key,
+        scopes=[HISTORY_READ_SCOPE],
+        status="revoked",
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        f"/users/{user_id}/history",
+        headers={"Authorization": f"Bearer {revoked_key}"},
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid API key."}
+
+
+def test_user_history_rejects_expired_api_key(user_history_client):
+    _, session_factory = user_history_client
+    user_id = uuid.uuid4()
+    expired_key = "oct_expired_test-secret"
+    add_api_key(
+        session_factory,
+        api_key=expired_key,
+        scopes=[HISTORY_READ_SCOPE],
+        expires_at=datetime.now(UTC) - timedelta(minutes=1),
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        f"/users/{user_id}/history",
+        headers={"Authorization": f"Bearer {expired_key}"},
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "API key is expired."}
+
+
+def test_user_history_rejects_valid_api_key_without_required_scope(
+    user_history_client,
+):
+    _, session_factory = user_history_client
+    user_id = uuid.uuid4()
+    write_only_key = "oct_writeonly_test-secret"
+    add_api_key(
+        session_factory,
+        api_key=write_only_key,
+        scopes=[HISTORY_WRITE_SCOPE],
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        f"/users/{user_id}/history",
+        headers={"Authorization": f"Bearer {write_only_key}"},
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "API key does not have the required scope."}
+
+
+def test_user_history_accepts_valid_api_key_with_required_scope(
+    user_history_client,
+):
+    _, session_factory = user_history_client
+    user_id = uuid.uuid4()
+    read_key = "oct_readonly_test-secret"
+    add_api_key(
+        session_factory,
+        api_key=read_key,
+        scopes=[HISTORY_READ_SCOPE],
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        f"/users/{user_id}/history",
+        headers={"Authorization": f"Bearer {read_key}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"items": []}
+
+
+def test_user_history_updates_last_used_at_after_success(user_history_client):
+    client, session_factory = user_history_client
+    user_id = uuid.uuid4()
+
+    before_response = client.get(f"/users/{user_id}/history")
+
+    assert before_response.status_code == 200
+    api_key_record = get_api_key_record(session_factory, DEFAULT_API_KEY)
+    assert api_key_record.last_used_at is not None
 
 
 def test_put_user_history_creates_user_and_history(user_history_client):
