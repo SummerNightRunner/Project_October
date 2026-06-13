@@ -27,6 +27,7 @@ from backend.app.main import app
 
 
 DEFAULT_API_KEY = "oct_allscopes_test-secret"
+DEFAULT_OWNER_USER_ID = uuid.UUID("11111111-1111-4111-8111-111111111111")
 
 
 def create_user_history_test_session_factory():
@@ -136,6 +137,7 @@ def user_history_client():
         session_factory,
         api_key=DEFAULT_API_KEY,
         scopes=[HISTORY_READ_SCOPE, HISTORY_WRITE_SCOPE, RATINGS_WRITE_SCOPE],
+        owner_user_id=DEFAULT_OWNER_USER_ID,
     )
 
     def override_get_db_session():
@@ -163,6 +165,7 @@ def add_api_key(
     *,
     api_key: str,
     scopes: list[str],
+    owner_user_id: uuid.UUID | None = None,
     status: str = "active",
     client_status: str = "active",
     expires_at: datetime | None = None,
@@ -172,8 +175,18 @@ def add_api_key(
     assert key_prefix is not None
 
     with session_factory() as session:
+        if owner_user_id is not None and session.get(User, owner_user_id) is None:
+            session.add(
+                User(
+                    id=owner_user_id,
+                    status="active",
+                    created_at=created_at,
+                    updated_at=created_at,
+                )
+            )
         api_client = ApiClient(
             id=uuid.uuid4(),
+            owner_user_id=owner_user_id,
             name=f"Test client {key_prefix}",
             status=client_status,
             created_at=created_at,
@@ -248,6 +261,32 @@ def test_user_history_rejects_invalid_api_key(user_history_client):
     assert response.json() == {"detail": "Invalid API key."}
 
 
+def test_user_history_does_not_update_last_used_at_for_invalid_secret(
+    user_history_client,
+):
+    _, session_factory = user_history_client
+    user_id = uuid.uuid4()
+    stored_key = "oct_badhash_real-secret"
+    presented_key = "oct_badhash_wrong-secret"
+    add_api_key(
+        session_factory,
+        api_key=stored_key,
+        scopes=[HISTORY_READ_SCOPE],
+        owner_user_id=user_id,
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        f"/users/{user_id}/history",
+        headers={"Authorization": f"Bearer {presented_key}"},
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid API key."}
+    api_key_record = get_api_key_record(session_factory, stored_key)
+    assert api_key_record.last_used_at is None
+
+
 def test_user_history_rejects_revoked_api_key(user_history_client):
     _, session_factory = user_history_client
     user_id = uuid.uuid4()
@@ -300,6 +339,7 @@ def test_user_history_rejects_valid_api_key_without_required_scope(
         session_factory,
         api_key=write_only_key,
         scopes=[HISTORY_WRITE_SCOPE],
+        owner_user_id=user_id,
     )
     client = TestClient(app)
 
@@ -322,6 +362,7 @@ def test_user_history_accepts_valid_api_key_with_required_scope(
         session_factory,
         api_key=read_key,
         scopes=[HISTORY_READ_SCOPE],
+        owner_user_id=user_id,
     )
     client = TestClient(app)
 
@@ -336,7 +377,7 @@ def test_user_history_accepts_valid_api_key_with_required_scope(
 
 def test_user_history_updates_last_used_at_after_success(user_history_client):
     client, session_factory = user_history_client
-    user_id = uuid.uuid4()
+    user_id = DEFAULT_OWNER_USER_ID
 
     before_response = client.get(f"/users/{user_id}/history")
 
@@ -345,9 +386,75 @@ def test_user_history_updates_last_used_at_after_success(user_history_client):
     assert api_key_record.last_used_at is not None
 
 
-def test_put_user_history_creates_user_and_history(user_history_client):
+def test_owner_api_key_rejects_other_user_history_and_updates_last_used_at(
+    user_history_client,
+):
     client, session_factory = user_history_client
+    other_user_id = uuid.uuid4()
+    add_catalog_movies(session_factory, "862")
+
+    read_response = client.get(f"/users/{other_user_id}/history")
+    history_response = client.put(
+        f"/users/{other_user_id}/history/862",
+        json={"status": "watched", "source": "manual"},
+    )
+    rating_response = client.put(
+        f"/users/{other_user_id}/ratings/862",
+        json={"rating_value": 8.5, "source": "manual"},
+    )
+
+    assert read_response.status_code == 403
+    assert history_response.status_code == 403
+    assert rating_response.status_code == 403
+    assert read_response.json() == {
+        "detail": "API key is not allowed to access this user."
+    }
+    assert history_response.json() == read_response.json()
+    assert rating_response.json() == read_response.json()
+    api_key_record = get_api_key_record(session_factory, DEFAULT_API_KEY)
+    assert api_key_record.last_used_at is not None
+
+    with session_factory() as session:
+        other_user = session.get(User, other_user_id)
+        other_history = session.scalar(
+            select(UserMovieHistory).where(UserMovieHistory.user_id == other_user_id)
+        )
+        other_rating = session.scalar(
+            select(UserMovieRating).where(UserMovieRating.user_id == other_user_id)
+        )
+
+    assert other_user is None
+    assert other_history is None
+    assert other_rating is None
+
+
+def test_api_client_without_owner_user_id_rejects_user_scoped_endpoint(
+    user_history_client,
+):
+    _, session_factory = user_history_client
     user_id = uuid.uuid4()
+    no_owner_key = "oct_noowner_test-secret"
+    add_api_key(
+        session_factory,
+        api_key=no_owner_key,
+        scopes=[HISTORY_READ_SCOPE],
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        f"/users/{user_id}/history",
+        headers={"Authorization": f"Bearer {no_owner_key}"},
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "API key is not allowed to access this user."}
+    api_key_record = get_api_key_record(session_factory, no_owner_key)
+    assert api_key_record.last_used_at is not None
+
+
+def test_put_user_history_updates_owner_history(user_history_client):
+    client, session_factory = user_history_client
+    user_id = DEFAULT_OWNER_USER_ID
     add_catalog_movies(session_factory, "862")
 
     response = client.put(
@@ -384,7 +491,7 @@ def test_put_user_history_creates_user_and_history(user_history_client):
 
 def test_put_user_history_updates_existing_entry(user_history_client):
     client, session_factory = user_history_client
-    user_id = uuid.uuid4()
+    user_id = DEFAULT_OWNER_USER_ID
     add_catalog_movies(session_factory, "862")
 
     first_response = client.put(
@@ -415,7 +522,7 @@ def test_put_user_history_updates_existing_entry(user_history_client):
 
 def test_get_user_history_filters_by_status_and_limit(user_history_client):
     client, session_factory = user_history_client
-    user_id = uuid.uuid4()
+    user_id = DEFAULT_OWNER_USER_ID
     add_catalog_movies(session_factory, "862", "8844", "15602")
 
     client.put(
@@ -465,7 +572,7 @@ def test_put_user_rating_creates_user_rating_and_history_includes_rating(
     user_history_client,
 ):
     client, session_factory = user_history_client
-    user_id = uuid.uuid4()
+    user_id = DEFAULT_OWNER_USER_ID
     add_catalog_movies(session_factory, "862")
 
     history_response = client.put(
@@ -504,7 +611,7 @@ def test_put_user_rating_creates_user_rating_and_history_includes_rating(
 
 def test_put_user_rating_updates_existing_rating(user_history_client):
     client, session_factory = user_history_client
-    user_id = uuid.uuid4()
+    user_id = DEFAULT_OWNER_USER_ID
     add_catalog_movies(session_factory, "862")
 
     first_response = client.put(
@@ -530,7 +637,7 @@ def test_put_user_rating_updates_existing_rating(user_history_client):
 
 def test_put_user_history_returns_404_for_unknown_movie(user_history_client):
     client, _ = user_history_client
-    user_id = uuid.uuid4()
+    user_id = DEFAULT_OWNER_USER_ID
 
     response = client.put(
         f"/users/{user_id}/history/missing",
@@ -548,7 +655,7 @@ def test_put_user_history_returns_404_for_unknown_movie(user_history_client):
 
 def test_put_user_rating_rejects_out_of_range_rating(user_history_client):
     client, session_factory = user_history_client
-    user_id = uuid.uuid4()
+    user_id = DEFAULT_OWNER_USER_ID
     add_catalog_movies(session_factory, "862")
 
     response = client.put(
