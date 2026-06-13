@@ -49,3 +49,16 @@
 - Добавлены auth-тесты на отсутствующий/неверный/revoked/expired ключ, недостаточный scope, успешный scope и обновление `last_used_at`.
 - Проверка через временный venv: `python -m pytest` прошел, 31 тест успешен, 1 предупреждение Starlette о deprecated `httpx` import.
 - Project HQ подтвердил `API-005` после merge в `main`: локальный запуск во временном venv прошел, 31 тест успешен, 1 предупреждение Starlette о deprecated `httpx` import.
+- Выполнен `API-007`: user-scoped endpoints теперь проверяют, что
+  `api_clients.owner_user_id` совпадает с path `user_id`.
+- Client с `owner_user_id = NULL` получает `403` на endpoints пользовательской
+  истории и оценок; service clients, роли и доступ к нескольким пользователям
+  не реализованы.
+- `api_keys.last_used_at` обновляется после успешной проверки ключа и scope,
+  включая случай valid key + forbidden user.
+- Добавлены тесты на доступ владельца к своему `user_id`, отказ для чужого
+  `user_id`, отказ для client без владельца, сохранение `401` для неверного
+  ключа и сохранение `403` для недостаточного scope.
+- Проверка через временный venv `/tmp/project_october_api007_venv`:
+  `python -m pytest` прошел, 34 теста успешны, 1 предупреждение Starlette о
+  deprecated `httpx` import.
