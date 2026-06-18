@@ -10,6 +10,8 @@ from sqlalchemy.pool import StaticPool
 from backend.app.api_key_auth import (
     HISTORY_READ_SCOPE,
     HISTORY_WRITE_SCOPE,
+    PREFERENCES_READ_SCOPE,
+    PREFERENCES_WRITE_SCOPE,
     RATINGS_WRITE_SCOPE,
     create_api_key_hash,
     extract_api_key_prefix,
@@ -21,6 +23,7 @@ from backend.app.db.models import (
     User,
     UserMovieHistory,
     UserMovieRating,
+    UserPreference,
 )
 from backend.app.db.session import get_db_session
 from backend.app.main import app
@@ -94,6 +97,22 @@ def create_user_history_test_session_factory():
         )
         connection.exec_driver_sql(
             """
+            CREATE TABLE user_preferences (
+                id CHAR(32) NOT NULL PRIMARY KEY,
+                user_id CHAR(32) NOT NULL,
+                preference_type TEXT NOT NULL,
+                preference_key TEXT NOT NULL,
+                weight NUMERIC(4, 2) NOT NULL,
+                source TEXT NOT NULL,
+                is_active BOOLEAN NOT NULL,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                UNIQUE(user_id, preference_type, preference_key)
+            )
+            """
+        )
+        connection.exec_driver_sql(
+            """
             CREATE TABLE api_clients (
                 id CHAR(32) NOT NULL PRIMARY KEY,
                 owner_user_id CHAR(32),
@@ -136,7 +155,13 @@ def user_history_client():
     add_api_key(
         session_factory,
         api_key=DEFAULT_API_KEY,
-        scopes=[HISTORY_READ_SCOPE, HISTORY_WRITE_SCOPE, RATINGS_WRITE_SCOPE],
+        scopes=[
+            HISTORY_READ_SCOPE,
+            HISTORY_WRITE_SCOPE,
+            RATINGS_WRITE_SCOPE,
+            PREFERENCES_READ_SCOPE,
+            PREFERENCES_WRITE_SCOPE,
+        ],
         owner_user_id=DEFAULT_OWNER_USER_ID,
     )
 
@@ -443,6 +468,294 @@ def test_api_client_without_owner_user_id_rejects_user_scoped_endpoint(
 
     response = client.get(
         f"/users/{user_id}/history",
+        headers={"Authorization": f"Bearer {no_owner_key}"},
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "API key is not allowed to access this user."}
+    api_key_record = get_api_key_record(session_factory, no_owner_key)
+    assert api_key_record.last_used_at is not None
+
+
+def test_get_user_preferences_accepts_valid_api_key_with_read_scope(
+    user_history_client,
+):
+    _, session_factory = user_history_client
+    user_id = uuid.uuid4()
+    read_key = "oct_prefread_test-secret"
+    add_api_key(
+        session_factory,
+        api_key=read_key,
+        scopes=[PREFERENCES_READ_SCOPE],
+        owner_user_id=user_id,
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        f"/users/{user_id}/preferences",
+        headers={"Authorization": f"Bearer {read_key}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"items": []}
+
+
+def test_put_user_preference_creates_new_preference(user_history_client):
+    client, session_factory = user_history_client
+    user_id = DEFAULT_OWNER_USER_ID
+
+    response = client.put(
+        f"/users/{user_id}/preferences/genre/comedy",
+        json={"weight": 2.25, "source": "manual", "is_active": True},
+    )
+
+    assert response.status_code == 200
+    response_json = response.json()
+    assert response_json["preference_type"] == "genre"
+    assert response_json["preference_key"] == "comedy"
+    assert response_json["weight"] == 2.25
+    assert response_json["source"] == "manual"
+    assert response_json["is_active"] is True
+    assert response_json["created_at"] is not None
+    assert response_json["updated_at"] is not None
+
+    with session_factory() as session:
+        user = session.get(User, user_id)
+        preferences = session.scalars(select(UserPreference)).all()
+
+    assert user is not None
+    assert user.status == "active"
+    assert len(preferences) == 1
+    assert preferences[0].preference_key == "comedy"
+
+
+def test_put_user_preference_updates_existing_preference_without_duplicate(
+    user_history_client,
+):
+    client, session_factory = user_history_client
+    user_id = DEFAULT_OWNER_USER_ID
+
+    first_response = client.put(
+        f"/users/{user_id}/preferences/keyword/space",
+        json={"weight": 3.0, "source": "manual", "is_active": True},
+    )
+    second_response = client.put(
+        f"/users/{user_id}/preferences/keyword/space",
+        json={"weight": -1.5, "source": "api", "is_active": False},
+    )
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+    assert second_response.json()["weight"] == -1.5
+    assert second_response.json()["source"] == "api"
+    assert second_response.json()["is_active"] is False
+
+    with session_factory() as session:
+        preferences = session.scalars(select(UserPreference)).all()
+
+    assert len(preferences) == 1
+    assert float(preferences[0].weight) == -1.5
+    assert preferences[0].is_active is False
+
+
+def test_get_user_preferences_filters_by_active_type_and_limit(user_history_client):
+    client, _session_factory = user_history_client
+    user_id = DEFAULT_OWNER_USER_ID
+
+    client.put(
+        f"/users/{user_id}/preferences/genre/comedy",
+        json={"weight": 2.0, "source": "manual", "is_active": True},
+    )
+    client.put(
+        f"/users/{user_id}/preferences/keyword/space",
+        json={"weight": 3.0, "source": "manual", "is_active": True},
+    )
+    client.put(
+        f"/users/{user_id}/preferences/genre/horror",
+        json={"weight": -4.0, "source": "manual", "is_active": False},
+    )
+
+    active_response = client.get(
+        f"/users/{user_id}/preferences",
+        params={"is_active": True, "limit": 1},
+    )
+    type_response = client.get(
+        f"/users/{user_id}/preferences",
+        params={"preference_type": "genre", "is_active": False, "limit": 20},
+    )
+
+    assert active_response.status_code == 200
+    assert len(active_response.json()["items"]) == 1
+    assert active_response.json()["items"][0]["is_active"] is True
+    assert type_response.status_code == 200
+    assert type_response.json()["items"] == [
+        {
+            "preference_type": "genre",
+            "preference_key": "horror",
+            "weight": -4.0,
+            "source": "manual",
+            "is_active": False,
+            "created_at": type_response.json()["items"][0]["created_at"],
+            "updated_at": type_response.json()["items"][0]["updated_at"],
+        }
+    ]
+
+
+def test_put_user_preference_rejects_blank_preference_key(user_history_client):
+    client, _session_factory = user_history_client
+    user_id = DEFAULT_OWNER_USER_ID
+
+    response = client.put(
+        f"/users/{user_id}/preferences/genre/%20%20%20",
+        json={"weight": 1.0, "source": "manual"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_put_user_preference_rejects_invalid_preference_type(user_history_client):
+    client, _session_factory = user_history_client
+    user_id = DEFAULT_OWNER_USER_ID
+
+    response = client.put(
+        f"/users/{user_id}/preferences/unsupported/comedy",
+        json={"weight": 1.0, "source": "manual"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_put_user_preference_rejects_out_of_range_weight(user_history_client):
+    client, _session_factory = user_history_client
+    user_id = DEFAULT_OWNER_USER_ID
+
+    response = client.put(
+        f"/users/{user_id}/preferences/genre/comedy",
+        json={"weight": 10.01, "source": "manual"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_put_user_preference_rejects_invalid_source(user_history_client):
+    client, _session_factory = user_history_client
+    user_id = DEFAULT_OWNER_USER_ID
+
+    response = client.put(
+        f"/users/{user_id}/preferences/genre/comedy",
+        json={"weight": 1.0, "source": "unknown"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_get_user_preferences_rejects_invalid_limit(user_history_client):
+    client, _session_factory = user_history_client
+    user_id = DEFAULT_OWNER_USER_ID
+
+    response = client.get(
+        f"/users/{user_id}/preferences",
+        params={"limit": 0},
+    )
+
+    assert response.status_code == 422
+
+
+def test_user_preferences_rejects_missing_and_invalid_api_key(user_history_client):
+    _, _session_factory = user_history_client
+    user_id = uuid.uuid4()
+    client = TestClient(app)
+
+    missing_response = client.get(f"/users/{user_id}/preferences")
+    invalid_response = client.get(
+        f"/users/{user_id}/preferences",
+        headers={"Authorization": "Bearer oct_missing_test-secret"},
+    )
+
+    assert missing_response.status_code == 401
+    assert missing_response.json() == {"detail": "Missing API key."}
+    assert invalid_response.status_code == 401
+    assert invalid_response.json() == {"detail": "Invalid API key."}
+
+
+def test_user_preferences_rejects_valid_api_key_without_required_scope(
+    user_history_client,
+):
+    _, session_factory = user_history_client
+    user_id = uuid.uuid4()
+    history_only_key = "oct_prefnoscope_test-secret"
+    add_api_key(
+        session_factory,
+        api_key=history_only_key,
+        scopes=[HISTORY_READ_SCOPE],
+        owner_user_id=user_id,
+    )
+    client = TestClient(app)
+
+    read_response = client.get(
+        f"/users/{user_id}/preferences",
+        headers={"Authorization": f"Bearer {history_only_key}"},
+    )
+    write_response = client.put(
+        f"/users/{user_id}/preferences/genre/comedy",
+        headers={"Authorization": f"Bearer {history_only_key}"},
+        json={"weight": 1.0, "source": "manual"},
+    )
+
+    assert read_response.status_code == 403
+    assert read_response.json() == {
+        "detail": "API key does not have the required scope."
+    }
+    assert write_response.status_code == 403
+    assert write_response.json() == read_response.json()
+
+
+def test_owner_api_key_rejects_other_user_preferences_and_updates_last_used_at(
+    user_history_client,
+):
+    client, session_factory = user_history_client
+    other_user_id = uuid.uuid4()
+
+    read_response = client.get(f"/users/{other_user_id}/preferences")
+    write_response = client.put(
+        f"/users/{other_user_id}/preferences/genre/comedy",
+        json={"weight": 1.0, "source": "manual"},
+    )
+
+    assert read_response.status_code == 403
+    assert write_response.status_code == 403
+    assert read_response.json() == {
+        "detail": "API key is not allowed to access this user."
+    }
+    assert write_response.json() == read_response.json()
+    api_key_record = get_api_key_record(session_factory, DEFAULT_API_KEY)
+    assert api_key_record.last_used_at is not None
+
+    with session_factory() as session:
+        other_user = session.get(User, other_user_id)
+        other_preference = session.scalar(
+            select(UserPreference).where(UserPreference.user_id == other_user_id)
+        )
+
+    assert other_user is None
+    assert other_preference is None
+
+
+def test_api_client_without_owner_user_id_rejects_user_preferences(
+    user_history_client,
+):
+    _, session_factory = user_history_client
+    user_id = uuid.uuid4()
+    no_owner_key = "oct_prefnoowner_test-secret"
+    add_api_key(
+        session_factory,
+        api_key=no_owner_key,
+        scopes=[PREFERENCES_READ_SCOPE],
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        f"/users/{user_id}/preferences",
         headers={"Authorization": f"Bearer {no_owner_key}"},
     )
 
