@@ -23,6 +23,9 @@
 - Проверка `python -m pytest tests/test_user_history_api.py` прошла: 30 тестов
   успешны.
 - Полная проверка `python -m pytest` прошла: 47 тестов успешны.
+- Project HQ подтвердил `API-006` после merge в `main`: локальный запуск во
+  временном venv `/tmp/project_october_api006_hq_venv` прошел, 47 тестов
+  успешны, 1 предупреждение Starlette о deprecated `httpx` import.
 
 ## 2026-06-15
 
