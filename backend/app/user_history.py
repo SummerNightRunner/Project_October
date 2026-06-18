@@ -14,6 +14,8 @@ from backend.app.api_key_auth import (
     ApiKeyPrincipal,
     HISTORY_READ_SCOPE,
     HISTORY_WRITE_SCOPE,
+    PREFERENCES_READ_SCOPE,
+    PREFERENCES_WRITE_SCOPE,
     RATINGS_WRITE_SCOPE,
     ensure_api_client_can_access_user,
     require_api_scope,
@@ -23,12 +25,22 @@ from backend.app.db.models import (
     User,
     UserMovieHistory,
     UserMovieRating,
+    UserPreference,
 )
 from backend.app.db.session import get_db_session
 
 
 HistoryStatus = Literal["watched", "planned", "dropped"]
 UserDataSource = Literal["manual", "csv_import", "api", "system"]
+UserPreferenceType = Literal[
+    "genre",
+    "keyword",
+    "person",
+    "language",
+    "adult_content",
+    "animation",
+    "free_text",
+]
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -61,6 +73,18 @@ class UserRatingUpdateRequest(BaseModel):
     source: UserDataSource = "manual"
 
 
+class UserPreferenceUpdateRequest(BaseModel):
+    weight: Decimal = Field(
+        ...,
+        ge=Decimal("-10.00"),
+        le=Decimal("10.00"),
+        max_digits=4,
+        decimal_places=2,
+    )
+    source: UserDataSource = "manual"
+    is_active: bool = True
+
+
 class UserHistoryItem(BaseModel):
     movie_id: str
     status: HistoryStatus
@@ -79,6 +103,20 @@ class UserRatingResponse(BaseModel):
     rating_value: float
     rated_at: datetime | None = None
     source: UserDataSource
+
+
+class UserPreferenceItem(BaseModel):
+    preference_type: UserPreferenceType
+    preference_key: str
+    weight: float
+    source: UserDataSource
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class UserPreferencesResponse(BaseModel):
+    items: list[UserPreferenceItem]
 
 
 def utc_now() -> datetime:
@@ -166,6 +204,25 @@ def get_history_item(
     return build_history_item(row[0], row[1])
 
 
+def normalize_preference_key(preference_key: str) -> str:
+    normalized_key = preference_key.strip()
+    if not normalized_key:
+        raise HTTPException(status_code=422, detail="preference_key must not be empty.")
+    return normalized_key
+
+
+def build_preference_item(preference: UserPreference) -> UserPreferenceItem:
+    return UserPreferenceItem(
+        preference_type=preference.preference_type,
+        preference_key=preference.preference_key,
+        weight=float(preference.weight),
+        source=preference.source,
+        is_active=preference.is_active,
+        created_at=as_utc_datetime(preference.created_at),
+        updated_at=as_utc_datetime(preference.updated_at),
+    )
+
+
 @router.get("/{user_id}/history", response_model=UserHistoryResponse)
 def get_user_history(
     user_id: uuid.UUID,
@@ -204,6 +261,83 @@ def get_user_history(
             for row in rows
         ]
     )
+
+
+@router.get("/{user_id}/preferences", response_model=UserPreferencesResponse)
+def get_user_preferences(
+    user_id: uuid.UUID,
+    is_active: bool | None = Query(default=None),
+    preference_type: UserPreferenceType | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=100),
+    auth: ApiKeyPrincipal = Depends(require_api_scope(PREFERENCES_READ_SCOPE)),
+    session: Session = Depends(get_db_session),
+) -> UserPreferencesResponse:
+    ensure_api_client_can_access_user(auth, user_id)
+
+    query = (
+        select(UserPreference)
+        .where(UserPreference.user_id == user_id)
+        .order_by(desc(UserPreference.updated_at), desc(UserPreference.created_at))
+        .limit(limit)
+    )
+
+    if is_active is not None:
+        query = query.where(UserPreference.is_active == is_active)
+
+    if preference_type is not None:
+        query = query.where(UserPreference.preference_type == preference_type)
+
+    preferences = session.scalars(query).all()
+    return UserPreferencesResponse(
+        items=[build_preference_item(preference) for preference in preferences]
+    )
+
+
+@router.put(
+    "/{user_id}/preferences/{preference_type}/{preference_key}",
+    response_model=UserPreferenceItem,
+)
+def put_user_preference(
+    user_id: uuid.UUID,
+    preference_type: UserPreferenceType,
+    preference_key: str,
+    request: UserPreferenceUpdateRequest,
+    auth: ApiKeyPrincipal = Depends(require_api_scope(PREFERENCES_WRITE_SCOPE)),
+    session: Session = Depends(get_db_session),
+) -> UserPreferenceItem:
+    ensure_api_client_can_access_user(auth, user_id)
+    ensure_user_exists(session, user_id)
+    normalized_preference_key = normalize_preference_key(preference_key)
+    updated_at = utc_now()
+
+    preference = session.scalar(
+        select(UserPreference).where(
+            UserPreference.user_id == user_id,
+            UserPreference.preference_type == preference_type,
+            UserPreference.preference_key == normalized_preference_key,
+        )
+    )
+
+    if preference is None:
+        preference = UserPreference(
+            user_id=user_id,
+            preference_type=preference_type,
+            preference_key=normalized_preference_key,
+            weight=request.weight,
+            source=request.source,
+            is_active=request.is_active,
+            created_at=updated_at,
+            updated_at=updated_at,
+        )
+        session.add(preference)
+    else:
+        preference.weight = request.weight
+        preference.source = request.source
+        preference.is_active = request.is_active
+        preference.updated_at = updated_at
+
+    session.commit()
+    return build_preference_item(preference)
 
 
 @router.put(

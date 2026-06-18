@@ -352,6 +352,22 @@ API-007 связывает API key/client с допустимым пользов
 - service clients, роли, модераторы и доступ к нескольким пользователям не
   реализуются в MVP и требуют отдельного решения.
 
+API-006 добавляет endpoints ручных предпочтений пользователя в тот же
+owner-bound контур:
+
+- `GET /users/{user_id}/preferences` читает `user_preferences`, поддерживает
+  фильтры `is_active`, `preference_type` и `limit`, требует
+  `preferences:read`;
+- `PUT /users/{user_id}/preferences/{preference_type}/{preference_key}` создает
+  или обновляет запись по уникальной паре пользователя, типа и ключа
+  предпочтения, требует `preferences:write`;
+- write-endpoint автоматически создает активного пользователя по UUID, как
+  history/rating endpoints, а read-endpoint не создает пользователя;
+- публичный API возвращает только `preference_type`, `preference_key`,
+  `weight`, `source`, `is_active`, `created_at`, `updated_at`;
+- предпочтения пока не подключены к content-based рекомендациям и не меняют
+  рекомендательную модель.
+
 Когда API начнет расти дальше, можно перейти к более явной пакетной структуре:
 
 ```text
