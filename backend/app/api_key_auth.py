@@ -18,6 +18,8 @@ from backend.app.db.session import get_db_session
 HISTORY_READ_SCOPE = "history:read"
 HISTORY_WRITE_SCOPE = "history:write"
 RATINGS_WRITE_SCOPE = "ratings:write"
+PREFERENCES_READ_SCOPE = "preferences:read"
+PREFERENCES_WRITE_SCOPE = "preferences:write"
 RECOMMENDATIONS_READ_SCOPE = "recommendations:read"
 
 SUPPORTED_API_KEY_SCOPES = frozenset(
@@ -25,6 +27,8 @@ SUPPORTED_API_KEY_SCOPES = frozenset(
         HISTORY_READ_SCOPE,
         HISTORY_WRITE_SCOPE,
         RATINGS_WRITE_SCOPE,
+        PREFERENCES_READ_SCOPE,
+        PREFERENCES_WRITE_SCOPE,
         RECOMMENDATIONS_READ_SCOPE,
     }
 )
