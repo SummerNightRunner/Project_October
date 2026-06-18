@@ -9,6 +9,7 @@
 - Source-файлы не изменялись.
 - Принято решение по `WEB-001`: MVP сайта писать на React + Vite.
 - Принято решение не расширять service clients в ближайшем MVP: user-scoped endpoints остаются owner-bound, clients без `owner_user_id` получают `403`.
+- Project HQ добавил недостающую дорожку к локально проверяемому MVP: `DEV-001` Docker Compose для backend MVP, `DEV-002` demo seed, `WEB-002` frontend shell, `WEB-003` подключение frontend к backend и `API-008` user-based recommendations endpoint.
 
 ## 2026-06-15
 
