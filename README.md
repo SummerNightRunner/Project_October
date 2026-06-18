@@ -94,7 +94,7 @@ python -m backend.app.db.sync_movie_catalog \
 `title_snapshot`, `release_date`, `source_catalog_version`, `updated_at` для фильмов,
 которые уже есть в таблице. Фильмы, пропавшие из CSV, не удаляются.
 
-## Пользовательская история и оценки
+## Пользовательская история, оценки и предпочтения
 
 Endpoints пользовательской истории используют синхронизированную таблицу
 `movie_catalog_entries`. Перед записью истории или оценки `movie_id` должен
@@ -129,6 +129,22 @@ curl -X PUT http://127.0.0.1:8000/users/<user_uuid>/ratings/862 \
 
 ```bash
 curl "http://127.0.0.1:8000/users/<user_uuid>/history?status=watched&limit=20" \
+  -H "Authorization: Bearer <api_key>"
+```
+
+Пример записи ручного предпочтения:
+
+```bash
+curl -X PUT http://127.0.0.1:8000/users/<user_uuid>/preferences/genre/comedy \
+  -H "Authorization: Bearer <api_key>" \
+  -H "Content-Type: application/json" \
+  -d '{"weight":2.25,"source":"manual","is_active":true}'
+```
+
+Пример чтения ручных предпочтений:
+
+```bash
+curl "http://127.0.0.1:8000/users/<user_uuid>/preferences?is_active=true&limit=20" \
   -H "Authorization: Bearer <api_key>"
 ```
 

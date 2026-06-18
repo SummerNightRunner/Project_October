@@ -10,6 +10,19 @@
 - Принято решение по `WEB-001`: MVP сайта писать на React + Vite.
 - Принято решение не расширять service clients в ближайшем MVP: user-scoped endpoints остаются owner-bound, clients без `owner_user_id` получают `403`.
 - Project HQ добавил недостающую дорожку к локально проверяемому MVP: `DEV-001` Docker Compose для backend MVP, `DEV-002` demo seed, `WEB-002` frontend shell, `WEB-003` подключение frontend к backend и `API-008` user-based recommendations endpoint.
+- Выполнен `API-006`: добавлены `GET /users/{user_id}/preferences` и
+  `PUT /users/{user_id}/preferences/{preference_type}/{preference_key}`.
+- Preferences endpoints используют существующий API-key auth, новые scopes
+  `preferences:read` и `preferences:write`, а также owner-bound правило
+  `api_clients.owner_user_id == user_id`.
+- `GET` preferences поддерживает фильтры `is_active`, `preference_type` и
+  `limit`; `PUT` создает или обновляет запись без дублей и автоматически
+  создает активного пользователя по UUID после проверки доступа.
+- Рекомендательная модель и frontend не менялись; `user_preferences` пока не
+  участвуют в построении рекомендаций.
+- Проверка `python -m pytest tests/test_user_history_api.py` прошла: 30 тестов
+  успешны.
+- Полная проверка `python -m pytest` прошла: 47 тестов успешны.
 
 ## 2026-06-15
 
