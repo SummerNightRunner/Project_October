@@ -32,6 +32,33 @@ FastAPI backend
 PostgreSQL
 ```
 
+## Локальный Docker Compose контур
+
+DEV-001 добавляет воспроизводимый локальный backend-контур на Docker Compose:
+
+- `db` поднимает PostgreSQL 16 с локальной базой `project_october`;
+- `backend` запускает FastAPI app командой `uvicorn backend.app.main:app`;
+- backend получает DSN через `PROJECT_OCTOBER_DATABASE_URL` и подключается к
+  PostgreSQL по внутреннему адресу `db:5432`;
+- локальная PostgreSQL data хранится в named volume
+  `project_october_postgres_data`;
+- локальный каталог `./data` монтируется в `/app/data`, чтобы контейнер видел
+  `data/processed/processed_metadata.csv`, но generated processed data не
+  попадала в Docker image и Git;
+- `db` имеет `pg_isready` healthcheck, а `backend` ожидает healthy PostgreSQL
+  через `depends_on`.
+
+Compose не выполняет миграции и синхронизацию каталога автоматически при старте
+API. Оператор запускает их явными one-off командами:
+
+```bash
+docker compose run --rm backend alembic upgrade head
+docker compose run --rm backend python -m backend.app.db.sync_movie_catalog
+```
+
+Такой порядок сохраняет обычный старт backend предсказуемым и не добавляет
+скрытые write-операции в контейнер API.
+
 ## PostgreSQL-схема пользовательской истории
 
 DB-001 фиксирует целевую схему хранения пользовательского состояния. DB-003 реализует этот контракт в SQLAlchemy-моделях и Alembic-миграции для PostgreSQL.

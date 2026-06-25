@@ -1,5 +1,30 @@
 # Дневник проекта
 
+## 2026-06-25
+
+- Выполнен `DEV-001`: добавлен `Dockerfile`, `.dockerignore` и
+  `docker-compose.yml` для локального backend MVP.
+- Compose поднимает PostgreSQL 16 и FastAPI backend; backend подключается к
+  базе через `PROJECT_OCTOBER_DATABASE_URL`, а PostgreSQL data хранится в named
+  volume `project_october_postgres_data`.
+- Alembic migrations и синхронизация `movie_catalog_entries` оставлены явными
+  one-off командами `docker compose run --rm backend alembic upgrade head` и
+  `docker compose run --rm backend python -m backend.app.db.sync_movie_catalog`.
+- README, архитектура, решения и backlog обновлены под локальный Docker Compose
+  сценарий.
+- Demo user/API key seed не реализован и остается задачей `DEV-002`.
+- Проверка прошла: `python -m pytest`, `docker compose config`,
+  `docker compose build backend`, `docker compose up -d db backend` и
+  `GET /health` через Compose.
+
+## 2026-06-21
+
+- Project Secretary создал дневной план на 2026-06-21 в 11:03 MSK после проверки `docs/ROADMAP.md`, `docs/BACKLOG.md`, `docs/JOURNAL.md`, последней daily note и `git status --short`.
+- Текущее состояние: ветка `main`, последний commit `7706b4d docs: add daily plan for 2026-06-20`, рабочее дерево было чистым до документационных обновлений.
+- Подтвержден фокус дня: `DEV-001` Docker Compose для локального backend MVP.
+- Рекомендуемая последовательность: `DEV-001`, затем `DEV-002`, затем `OCT-003`, `TEST-002` и `WEB-002`.
+- Source-файлы не изменялись; обновление ограничено проектной документацией.
+
 ## 2026-06-20
 
 - Project Secretary создал дневной план на 2026-06-20 в 15:09 MSK после проверки `docs/ROADMAP.md`, `docs/BACKLOG.md`, `docs/JOURNAL.md`, последней daily note и `git status --short`.

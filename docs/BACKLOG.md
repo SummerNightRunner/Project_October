@@ -1,6 +1,6 @@
 # Backlog
 
-Актуализировано: 2026-06-20
+Актуализировано: 2026-06-25
 
 ## Сейчас
 
@@ -21,12 +21,12 @@
 | API-005 | P2 | Готово | Добавить API-key auth для сторонних проектов | Реализована проверка `key_prefix`, `key_hash`, статуса, срока действия, статуса API client, scopes и обновление `last_used_at` |
 | API-006 | P1 | Готово | Добавить endpoints ручных предпочтений пользователя | API умеет читать, создавать и обновлять `user_preferences` с owner-bound API-key доступом |
 | API-007 | P2 | Готово | Связать API key/client с допустимыми пользователями | User-scoped endpoints разрешают доступ только когда `api_clients.owner_user_id` совпадает с path `user_id`; clients без владельца получают `403` |
+| DEV-001 | P1 | Готово | Добавить Docker Compose для локального backend MVP | FastAPI backend и PostgreSQL запускаются через Docker Compose; migrations и синхронизация `movie_catalog_entries` выполняются явными one-off командами |
 
 ## Далее
 
 | ID | Приоритет | Статус | Задача | Результат |
 | --- | --- | --- | --- | --- |
-| DEV-001 | P1 | К выполнению | Добавить Docker Compose для локального backend MVP | FastAPI, PostgreSQL, Alembic migrations и синхронизация `movie_catalog_entries` запускаются локально одной понятной командой |
 | DEV-002 | P1 | К выполнению | Добавить demo seed для локального MVP | Есть demo user, API client/key и минимальные demo-данные для ручной проверки API без production-секретов |
 | WEB-002 | P2 | К выполнению | Создать React/Vite frontend shell | Есть каркас сайта с роутингом, базовым layout и API client для будущего подключения к backend |
 | WEB-003 | P2 | К выполнению | Подключить frontend к backend MVP | Сайт умеет искать фильмы, управлять историей, оценками, предпочтениями и запрашивать рекомендации |

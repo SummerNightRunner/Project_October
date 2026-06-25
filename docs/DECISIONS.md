@@ -1,5 +1,43 @@
 # Архитектурные решения
 
+## 2026-06-25 - Docker Compose запускает API отдельно от миграций и catalog sync
+
+Статус: принято.
+
+Решение:
+
+Для локального backend MVP использовать Docker Compose с двумя постоянными
+services:
+
+- `db` на PostgreSQL 16 с named volume `project_october_postgres_data`;
+- `backend` на FastAPI/uvicorn, подключенный к PostgreSQL через
+  `PROJECT_OCTOBER_DATABASE_URL`.
+
+Alembic migrations и синхронизация `movie_catalog_entries` не запускаются
+автоматически при старте backend. Они выполняются отдельными one-off командами:
+
+```bash
+docker compose run --rm backend alembic upgrade head
+docker compose run --rm backend python -m backend.app.db.sync_movie_catalog
+```
+
+Причина:
+
+Для текущего MVP проще и надежнее держать API startup без скрытых write-операций
+в базе. Миграции и catalog sync являются операторскими действиями: их нужно
+видеть в локальном сценарии, повторять вручную после изменений схемы или
+обработанного каталога и не смешивать с обычным рестартом API.
+
+Последствия:
+
+- Локальный backend можно поднять без ручной установки PostgreSQL.
+- Первый запуск требует явной последовательности: подготовить
+  `processed_metadata.csv`, применить миграции, синхронизировать каталог,
+  запустить API.
+- Demo user/API key seed не входит в DEV-001 и остается задачей `DEV-002`.
+- `data/processed/processed_metadata.csv` остается generated artifact и не
+  коммитится.
+
 ## 2026-06-19 - Ручные предпочтения используют существующий owner-bound API-контур
 
 Статус: принято.

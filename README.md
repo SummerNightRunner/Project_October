@@ -51,6 +51,99 @@ curl -X POST http://127.0.0.1:8000/recommendations \
 
 Для `POST /recommendations` нужен локальный файл `data/processed/processed_metadata.csv`.
 
+## Локальный запуск backend MVP через Docker Compose
+
+Docker Compose контур предназначен для локальной разработки и ручной проверки
+backend MVP. Он поднимает:
+
+- `db` - PostgreSQL 16 с локальной базой `project_october`;
+- `backend` - FastAPI app на `http://127.0.0.1:8000`.
+
+Compose использует только безопасные локальные значения окружения. Пароль
+`project_october_local_password` не является production-секретом и нужен только
+для локального контейнера. PostgreSQL data хранится в named volume
+`project_october_postgres_data`. Для доступа с хоста PostgreSQL опубликован на
+`127.0.0.1:5433`, а backend внутри Compose подключается к `db:5432` через
+`PROJECT_OCTOBER_DATABASE_URL`.
+
+Первый запуск начинается со сборки backend image:
+
+```bash
+docker compose build backend
+```
+
+Если `data/processed/processed_metadata.csv` отсутствует, сначала создайте его
+из текущих raw CSV:
+
+```bash
+python backend/data_preprocessor.py
+```
+
+То же можно выполнить внутри backend image, если локальный Python не настроен:
+
+```bash
+docker compose run --rm --no-deps backend python backend/data_preprocessor.py
+```
+
+Запустите PostgreSQL и дождитесь healthy-состояния через Compose healthcheck:
+
+```bash
+docker compose up -d db
+```
+
+Примените Alembic migrations:
+
+```bash
+docker compose run --rm backend alembic upgrade head
+```
+
+Синхронизируйте `movie_catalog_entries` из обработанного каталога:
+
+```bash
+docker compose run --rm backend python -m backend.app.db.sync_movie_catalog
+```
+
+Запустите API:
+
+```bash
+docker compose up -d backend
+```
+
+Проверка:
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+Ожидаемый ответ:
+
+```json
+{"status":"ok"}
+```
+
+Для повторного запуска после уже примененных миграций и синхронизации обычно
+достаточно:
+
+```bash
+docker compose up -d db backend
+```
+
+Остановить контейнеры без удаления PostgreSQL volume:
+
+```bash
+docker compose down
+```
+
+Удалить локальную PostgreSQL data можно только осознанно:
+
+```bash
+docker compose down -v
+```
+
+DEV-001 не добавляет demo user/API key seed. Это остается отдельной задачей
+`DEV-002`; до нее user-scoped endpoints требуют вручную созданные записи
+`users`, `api_clients` и `api_keys` с корректными scopes.
+
 ## Конфигурация базы данных
 
 PostgreSQL-подключение настраивается через переменную окружения `PROJECT_OCTOBER_DATABASE_URL`.
