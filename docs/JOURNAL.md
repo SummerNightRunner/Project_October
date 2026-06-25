@@ -16,6 +16,8 @@
 - Проверка прошла: `python -m pytest`, `docker compose config`,
   `docker compose build backend`, `docker compose up -d db backend` и
   `GET /health` через Compose.
+- Project HQ подтвердил `DEV-001` после merge в `main`: локально прошли
+  `python -m pytest`, `docker compose config` и `docker compose build backend`.
 
 ## 2026-06-21
 
